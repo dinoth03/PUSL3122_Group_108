@@ -1,0 +1,30 @@
+// furniture-data.js — Furniture catalog
+
+const FURNITURE_CATALOG = [
+    // Sofas
+    { id: 'sofa_3seat', name: 'Living Room Sofa', category: 'Sofa', icon: '🛋️', defaultColor: '#6B8E23', width: 2.2, depth: 0.9, height: 0.85 },
+    { id: 'sofa_2seat', name: 'Two-Seat Sofa', category: 'Sofa', icon: '🛋️', defaultColor: '#8B6914', width: 1.6, depth: 0.85, height: 0.8 },
+    { id: 'armchair', name: 'Armchair', category: 'Chair', icon: '🪑', defaultColor: '#B06A3B', width: 0.9, depth: 0.85, height: 0.85 },
+    // Beds
+    { id: 'bed_queen', name: 'Queen Bed', category: 'Bed', icon: '🛏️', defaultColor: '#8B7355', width: 1.6, depth: 2.1, height: 0.6 },
+    { id: 'bed_single', name: 'Single Bed', category: 'Bed', icon: '🛏️', defaultColor: '#A0856C', width: 1.0, depth: 2.0, height: 0.55 },
+    // Tables
+    { id: 'dining_table', name: 'Dining Table', category: 'Table', icon: '🪵', defaultColor: '#8B4513', width: 1.8, depth: 0.9, height: 0.76 },
+    { id: 'side_table', name: 'Side Table', category: 'Table', icon: '🪵', defaultColor: '#C4975A', width: 0.5, depth: 0.5, height: 0.6 },
+    { id: 'coffee_table', name: 'Coffee Table', category: 'Table', icon: '🪵', defaultColor: '#6B4226', width: 1.2, depth: 0.6, height: 0.45 },
+    // Chairs
+    { id: 'dining_chair', name: 'Dining Chair', category: 'Chair', icon: '🪑', defaultColor: '#4A5568', width: 0.5, depth: 0.5, height: 0.9 },
+    { id: 'office_chair', name: 'Office Chair', category: 'Chair', icon: '🪑', defaultColor: '#2D3748', width: 0.6, depth: 0.6, height: 1.0 },
+    // Cabinets & Storage
+    { id: 'wardrobe', name: 'Wardrobe', category: 'Cabinet', icon: '🗄️', defaultColor: '#7B5C3E', width: 2.0, depth: 0.6, height: 2.0 },
+    { id: 'storage_cab', name: 'Storage Cabinet', category: 'Cabinet', icon: '🗄️', defaultColor: '#5B4636', width: 1.0, depth: 0.5, height: 1.8 },
+    { id: 'tv_unit', name: 'TV Unit', category: 'Cabinet', icon: '📺', defaultColor: '#3C3C3C', width: 1.8, depth: 0.45, height: 0.55 },
+    { id: 'bookshelf', name: 'Bookshelf', category: 'Cabinet', icon: '📚', defaultColor: '#8B7355', width: 1.0, depth: 0.35, height: 2.0 },
+    // Others
+    { id: 'desk', name: 'Work Desk', category: 'Desk', icon: '🖥️', defaultColor: '#C0A882', width: 1.4, depth: 0.7, height: 0.76 },
+    { id: 'plant_large', name: 'Floor Plant', category: 'Decor', icon: '🪴', defaultColor: '#2D6A4F', width: 0.4, depth: 0.4, height: 1.2 },
+    { id: 'lamp_floor', name: 'Floor Lamp', category: 'Decor', icon: '💡', defaultColor: '#F0D060', width: 0.3, depth: 0.3, height: 1.5 },
+    { id: 'rug', name: 'Area Rug', category: 'Decor', icon: '🟫', defaultColor: '#C4956A', width: 2.0, depth: 1.5, height: 0.02 },
+];
+
+const CATALOG_CATEGORIES = ['Sofa', 'Chair', 'Bed', 'Table', 'Cabinet', 'Desk', 'Decor'];

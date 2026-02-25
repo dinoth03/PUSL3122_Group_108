@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Walampoori — My Designs</title>
+    <meta name="description" content="Browse and manage your saved furniture room designs.">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .empty-designs {
+            text-align: center;
+            padding: 64px 24px;
+        }
+
+        .empty-designs p {
+            margin-bottom: 20px;
+        }
+
+        .design-card-date {
+            font-size: .72rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .design-preview-canvas {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <a href="editor.html" class="navbar-brand">🏗️ Design Compiler</a>
+        <div class="navbar-links">
+            <a href="editor.html" class="nav-link">Editor</a>
+            <a href="designs.html" class="nav-link active">My Designs</a>
+            <a href="rooms.html" class="nav-link">Rooms</a>
+        </div>
+        <div class="navbar-right">
+            <button class="btn btn-ghost" id="signout-btn">↩ Sign Out</button>
+        </div>
+    </nav>
+
+    <div class="page-container">
+        <div class="page-header">
+            <div>
+                <h1>My Designs</h1>
+                <p>Manage your saved room designs</p>
+            </div>
+            <a href="editor.html" class="btn btn-primary">+ New Design</a>
+        </div>
+
+        <div id="designs-grid" class="designs-grid"></div>
+    </div>
+
+    <!-- Confirm Delete Modal -->
+    <div class="modal-overlay" id="delete-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Delete Design</h2>
+                <button class="modal-close" id="delete-modal-close">✕</button>
+            </div>
+            <p>Are you sure you want to delete <strong id="delete-design-name"></strong>? This cannot be undone.</p>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" id="delete-cancel-btn">Cancel</button>
+                <button class="btn btn-danger" id="delete-confirm-btn">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/state.js"></script>
+    <script>
+        if (!authGuard()) throw 'Not authenticated';
+
+        document.getElementById('signout-btn').addEventListener('click', authLogout);
+
+        let pendingDeleteId = null;
+
+        function renderDesigns() {
+            const grid = document.getElementById('designs-grid');
+            const designs = loadDesigns();
+            if (designs.length === 0) {
+                grid.innerHTML = `
+          <div class="empty-designs" style="grid-column:1/-1;">
+            <div style="font-size:3rem;margin-bottom:12px;">📐</div>
+            <h2>No designs yet</h2>
+            <p>Create your first furniture layout in the editor.</p>
+            <a href="editor.html" class="btn btn-primary">Start Designing</a>
+          </div>`;
+                return;
+            }
+
+            grid.innerHTML = designs.map(d => {
+                const date = new Date(d.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                const furnitureCount = d.furniture ? d.furniture.length : 0;
+                const r = d.room || {};
+                const emoji = ['🛋️', '🛏️', '🪑', '🪵', '🗄️'][Math.abs(d.name.charCodeAt(0)) % 5];
+                return `
+          <div class="design-card" id="card-${d.id}">
+            <div class="design-card-preview">
+              <canvas class="design-preview-canvas" id="preview-${d.id}" width="260" height="140"></canvas>
+            </div>
+            <div class="design-card-body">
+              <div class="design-card-name">${escapeHtml(d.name)}</div>
+              <div class="design-card-meta">${r.width || 5}m × ${r.length || 5}m — ${furnitureCount} item${furnitureCount !== 1 ? 's' : ''}</div>
+              <div class="design-card-date">Saved ${date}</div>
+              <div class="design-card-actions">
+                <a href="editor.html?design=${d.id}" class="btn btn-primary" style="flex:1;">✏️ Edit</a>
+                <button class="btn btn-ghost btn-danger-outline" onclick="confirmDelete('${d.id}', '${escapeHtml(d.name)}')">🗑️</button>
+              </div>
+            </div>
+          </div>`;
+            }).join('');
+
+            // Draw mini previews
+            designs.forEach(d => drawMiniPreview(d));
+        }
+
+        function drawMiniPreview(design) {
+            const canvas = document.getElementById(`preview-${design.id}`);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const W = canvas.width, H = canvas.height;
+            const room = design.room || { width: 5, length: 5, floorColor: '#D2848C' };
+            const pad = 16;
+            const aspect = room.width / room.length;
+            let rw = W - pad * 2, rh = H - pad * 2;
+            if (rw / rh > aspect) rw = rh * aspect;
+            else rh = rw / aspect;
+            const rx = (W - rw) / 2, ry = (H - rh) / 2;
+
+            ctx.fillStyle = '#2a2a3a';
+            ctx.fillRect(0, 0, W, H);
+            ctx.fillStyle = room.floorColor || '#D2848C';
+            ctx.fillRect(rx, ry, rw, rh);
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(rx, ry, rw, rh);
+
+            (design.furniture || []).forEach(item => {
+                const pxW = (item.width * item.scale / room.width) * rw;
+                const pxH = (item.depth * item.scale / room.length) * rh;
+                const cx = rx + item.x * rw;
+                const cy = ry + item.y * rh;
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate((item.rotation || 0) * Math.PI / 180);
+                ctx.fillStyle = item.color || '#888';
+                ctx.strokeStyle = 'rgba(0,0,0,.3)';
+                ctx.lineWidth = 0.8;
+                ctx.fillRect(-pxW / 2, -pxH / 2, pxW, pxH);
+                ctx.strokeRect(-pxW / 2, -pxH / 2, pxW, pxH);
+                ctx.restore();
+            });
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function confirmDelete(id, name) {
+            pendingDeleteId = id;
+            document.getElementById('delete-design-name').textContent = name;
+            document.getElementById('delete-modal').classList.add('open');
+        }
+
+        document.getElementById('delete-confirm-btn').addEventListener('click', () => {
+            if (pendingDeleteId) {
+                deleteDesign(pendingDeleteId);
+                pendingDeleteId = null;
+                document.getElementById('delete-modal').classList.remove('open');
+                renderDesigns();
+                showToast('Design deleted.', 'success');
+            }
+        });
+
+        document.getElementById('delete-cancel-btn').addEventListener('click', () => {
+            document.getElementById('delete-modal').classList.remove('open');
+        });
+        document.getElementById('delete-modal-close').addEventListener('click', () => {
+            document.getElementById('delete-modal').classList.remove('open');
+        });
+
+        function showToast(msg, type = '') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            const icons = { success: '✅', error: '❌' };
+            toast.innerHTML = `<span>${icons[type] || 'ℹ️'}</span> ${msg}`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.style.animation = 'fadeOut .25s ease forwards'; setTimeout(() => toast.remove(), 260); }, 2800);
+        }
+
+        renderDesigns();
+    </script>
+</body>
+
+</html>

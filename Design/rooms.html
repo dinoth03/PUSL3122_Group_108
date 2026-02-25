@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Walampoori — Rooms</title>
+    <meta name="description" content="Manage your room configurations in Walampoori Room Visualizer.">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .rooms-content {
+            display: grid;
+            grid-template-columns: 1fr 360px;
+            gap: 24px;
+            align-items: start;
+        }
+
+        .form-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 20px;
+        }
+
+        .form-section h2 {
+            margin-bottom: 16px;
+        }
+
+        .color-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <a href="editor.html" class="navbar-brand">🏗️ Design Compiler</a>
+        <div class="navbar-links">
+            <a href="editor.html" class="nav-link">Editor</a>
+            <a href="designs.html" class="nav-link">My Designs</a>
+            <a href="rooms.html" class="nav-link active">Rooms</a>
+        </div>
+        <div class="navbar-right">
+            <button class="btn btn-ghost" id="signout-btn">↩ Sign Out</button>
+        </div>
+    </nav>
+
+    <div class="page-container">
+        <div class="page-header">
+            <div>
+                <h1>Rooms</h1>
+                <p>Create and manage room configurations</p>
+            </div>
+        </div>
+
+        <div class="rooms-content">
+            <!-- Room list -->
+            <div>
+                <div id="rooms-list" class="rooms-list"></div>
+            </div>
+
+            <!-- Add/Edit Room form -->
+            <div class="form-section" id="room-form-card">
+                <h2 id="form-title">Add New Room</h2>
+                <div style="display:flex;flex-direction:column;gap:14px;">
+                    <input type="hidden" id="edit-room-id">
+                    <div class="form-group">
+                        <label class="form-label" for="r-name">Room Name</label>
+                        <input class="form-input" type="text" id="r-name" placeholder="e.g. Master Bedroom">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="r-width">Width (m)</label>
+                            <input class="form-input" type="number" id="r-width" value="5" min="1" max="30" step="0.5">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="r-length">Length (m)</label>
+                            <input class="form-input" type="number" id="r-length" value="5" min="1" max="30" step="0.5">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="r-height">Height (m)</label>
+                            <input class="form-input" type="number" id="r-height" value="3" min="2" max="6" step="0.1">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Wall Color</label>
+                        <div class="color-row">
+                            <input class="form-input" type="color" id="r-wall-color" value="#FFFFFF"
+                                style="flex:1;max-width:60px;">
+                            <input class="form-input" type="text" id="r-wall-hex" value="#FFFFFF" placeholder="#FFFFFF"
+                                style="font-family:monospace;flex:1;" maxlength="7">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Floor Color</label>
+                        <div class="color-row">
+                            <input class="form-input" type="color" id="r-floor-color" value="#D2848C"
+                                style="flex:1;max-width:60px;">
+                            <input class="form-input" type="text" id="r-floor-hex" value="#D2848C" placeholder="#D2848C"
+                                style="font-family:monospace;flex:1;" maxlength="7">
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:10px;margin-top:4px;">
+                        <button class="btn btn-primary" style="flex:1;" id="save-room-btn">💾 Save Room</button>
+                        <button class="btn btn-ghost" id="clear-form-btn">Clear</button>
+                    </div>
+                    <button class="btn btn-secondary" onclick="window.location.href='editor.html'"
+                        style="width:100%;">Open in Editor →</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/state.js"></script>
+    <script>
+        if (!authGuard()) throw 'Not authenticated';
+        document.getElementById('signout-btn').addEventListener('click', authLogout);
+
+        // Sync color input ↔ hex text
+        ['wall', 'floor'].forEach(type => {
+            document.getElementById(`r-${type}-color`).addEventListener('input', e => {
+                document.getElementById(`r-${type}-hex`).value = e.target.value.toUpperCase();
+            });
+            document.getElementById(`r-${type}-hex`).addEventListener('input', e => {
+                const val = e.target.value;
+                if (/^#[0-9A-Fa-f]{6}$/.test(val)) document.getElementById(`r-${type}-color`).value = val;
+            });
+        });
+
+        function renderRooms() {
+            const list = document.getElementById('rooms-list');
+            const rooms = loadRooms();
+            if (rooms.length === 0) {
+                list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏠</div><p>No rooms saved yet.<br>Create your first room using the form.</p></div>`;
+                return;
+            }
+            list.innerHTML = rooms.map(r => `
+        <div class="room-card" id="room-card-${r.id}">
+          <div class="room-card-icon">🏠</div>
+          <div class="room-card-info">
+            <div class="room-card-name">${escapeHtml(r.name)}</div>
+            <div class="room-card-dims">${r.width}m × ${r.length}m × ${r.height}m — Wall: ${r.wallColor} / Floor: ${r.floorColor}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <button class="icon-btn" onclick="editRoom('${r.id}')" title="Edit">✏️</button>
+            <button class="icon-btn danger" onclick="deleteRoomById('${r.id}')" title="Delete">🗑️</button>
+            <a href="editor.html" class="btn btn-primary btn-icon" title="Open in Editor" onclick="loadRoomPreset('${r.id}')">→</a>
+          </div>
+        </div>`).join('');
+        }
+
+        document.getElementById('save-room-btn').addEventListener('click', () => {
+            const name = document.getElementById('r-name').value.trim();
+            if (!name) { showToast('Please enter a room name.', 'error'); return; }
+            const id = document.getElementById('edit-room-id').value || undefined;
+            saveRoom({
+                id,
+                name,
+                width: parseFloat(document.getElementById('r-width').value) || 5,
+                length: parseFloat(document.getElementById('r-length').value) || 5,
+                height: parseFloat(document.getElementById('r-height').value) || 3,
+                wallColor: document.getElementById('r-wall-color').value,
+                floorColor: document.getElementById('r-floor-color').value,
+            });
+            clearForm();
+            renderRooms();
+            showToast('Room saved!', 'success');
+        });
+
+        document.getElementById('clear-form-btn').addEventListener('click', clearForm);
+
+        function clearForm() {
+            document.getElementById('edit-room-id').value = '';
+            document.getElementById('r-name').value = '';
+            document.getElementById('r-width').value = 5;
+            document.getElementById('r-length').value = 5;
+            document.getElementById('r-height').value = 3;
+            document.getElementById('r-wall-color').value = '#FFFFFF';
+            document.getElementById('r-wall-hex').value = '#FFFFFF';
+            document.getElementById('r-floor-color').value = '#D2848C';
+            document.getElementById('r-floor-hex').value = '#D2848C';
+            document.getElementById('form-title').textContent = 'Add New Room';
+        }
+
+        function editRoom(id) {
+            const rooms = loadRooms();
+            const r = rooms.find(x => x.id === id);
+            if (!r) return;
+            document.getElementById('edit-room-id').value = r.id;
+            document.getElementById('r-name').value = r.name;
+            document.getElementById('r-width').value = r.width;
+            document.getElementById('r-length').value = r.length;
+            document.getElementById('r-height').value = r.height;
+            document.getElementById('r-wall-color').value = r.wallColor;
+            document.getElementById('r-wall-hex').value = r.wallColor.toUpperCase();
+            document.getElementById('r-floor-color').value = r.floorColor;
+            document.getElementById('r-floor-hex').value = r.floorColor.toUpperCase();
+            document.getElementById('form-title').textContent = 'Edit Room';
+            document.getElementById('room-form-card').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function deleteRoomById(id) {
+            if (!confirm('Delete this room?')) return;
+            deleteRoom(id);
+            renderRooms();
+            showToast('Room deleted.', 'success');
+        }
+
+        function loadRoomPreset(id) {
+            // Pre-load room into appState before navigating
+            const r = loadRooms().find(x => x.id === id);
+            if (r) Object.assign(appState.currentRoom, r);
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function showToast(msg, type = '') {
+            const tc = document.getElementById('toast-container');
+            const t = document.createElement('div');
+            t.className = `toast ${type}`;
+            t.innerHTML = `<span>${{ success: '✅', error: '❌' }[type] || 'ℹ️'}</span> ${msg}`;
+            tc.appendChild(t);
+            setTimeout(() => { t.style.animation = 'fadeOut .25s ease forwards'; setTimeout(() => t.remove(), 260); }, 2800);
+        }
+
+        renderRooms();
+    </script>
+</body>
+
+</html>

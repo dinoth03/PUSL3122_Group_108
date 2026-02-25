@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design Compiler — Room Editor</title>
+    <meta name="description" content="Design furniture layouts in 2D and 3D with Design Compiler.">
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- Three.js r128 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls (must come after three.min.js) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        #canvas3d-container {
+            display: none;
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        #canvas2d-container {
+            display: block;
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #2a2a3a;
+        }
+
+        #canvas2d {
+            display: block;
+        }
+
+        .room-info-overlay {
+            font-family: 'Inter', monospace;
+        }
+
+        .canvas-header-btns {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            display: flex;
+            gap: 6px;
+            z-index: 5;
+        }
+
+        .canvas-header-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, .15);
+            border: 1px solid rgba(255, 255, 255, .25);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: .85rem;
+            transition: all .15s;
+            backdrop-filter: blur(6px);
+        }
+
+        .canvas-header-btn:hover,
+        .canvas-header-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .sidebar-section-body {
+            padding: 14px;
+        }
+
+        .no-placed {
+            padding: 24px 14px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: .82rem;
+        }
+
+        input[type=number] {
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+
+        input[type=number]::-webkit-outer-spin-button,
+        input[type=number]::-webkit-inner-spin-button {
+            -webkit-appearance: inner-spin-button;
+            opacity: 1;
+        }
+
+        .color-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .color-swatch-input {
+            flex: 1;
+        }
+
+        #canvas2d-container canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ── Navbar ── -->
+    <nav class="navbar">
+        <a href="editor.html" class="navbar-brand">🏗️ Design Compiler</a>
+        <div class="navbar-links">
+            <a href="editor.html" class="nav-link active">Editor</a>
+            <a href="designs.html" class="nav-link">My Designs</a>
+            <a href="rooms.html" class="nav-link">Rooms</a>
+        </div>
+        <div class="navbar-right">
+            <div class="view-toggle">
+                <button class="view-btn active" id="btn-view-2d">⊞ 2D</button>
+                <button class="view-btn" id="btn-view-3d">⬛ 3D</button>
+            </div>
+            <button class="btn btn-ghost" id="signout-btn">↩ Sign Out</button>
+        </div>
+    </nav>
+
+    <!-- ── Editor Layout ── -->
+    <div class="editor-layout">
+
+        <!-- LEFT SIDEBAR -->
+        <aside class="sidebar-left">
+            <h1 style="font-size:1.2rem;" id="design-title">New Design</h1>
+
+            <!-- Room Configuration -->
+            <div class="sidebar-section">
+                <div class="card-header">
+                    <h2>Room Configuration</h2>
+                    <p class="sidebar-section-subtitle">Adjust dimensions and colors</p>
+                </div>
+                <div class="sidebar-section-body">
+                    <div class="form-group" style="margin-bottom:12px;">
+                        <label class="form-label" for="room-name">Room Name</label>
+                        <input class="form-input" type="text" id="room-name" value="New Room"
+                            placeholder="e.g. Living Room">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:12px;">
+                        <label class="form-label">Dimensions (m)</label>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="room-width">Width</label>
+                                <input class="form-input" type="number" id="room-width" value="5" min="1" max="30"
+                                    step="0.5">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="room-length">Length</label>
+                                <input class="form-input" type="number" id="room-length" value="5" min="1" max="30"
+                                    step="0.5">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="room-height">Height</label>
+                                <input class="form-input" type="number" id="room-height" value="3" min="2" max="6"
+                                    step="0.1">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:12px;">
+                        <label class="form-label">Wall Color</label>
+                        <div class="color-row">
+                            <input class="form-input color-swatch-input" type="color" id="room-wall-color"
+                                value="#FFFFFF">
+                            <span class="color-hex" id="wall-color-hex">#FFFFFF</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:16px;">
+                        <label class="form-label">Floor Color</label>
+                        <div class="color-row">
+                            <input class="form-input color-swatch-input" type="color" id="room-floor-color"
+                                value="#D2848C">
+                            <span class="color-hex" id="floor-color-hex">#D2848C</span>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary btn-full" id="update-room-btn">Update Room</button>
+                </div>
+            </div>
+
+            <!-- Save Design -->
+            <div class="sidebar-section">
+                <div class="card-header">
+                    <h2>Save Design</h2>
+                </div>
+                <div class="sidebar-section-body">
+                    <div class="form-group" style="margin-bottom:10px;">
+                        <label class="form-label" for="design-name-input">Design Name</label>
+                        <input class="form-input" type="text" id="design-name-input" placeholder="Enter design name">
+                    </div>
+                    <button class="btn btn-primary btn-full" id="save-design-btn">💾 Save Current Design</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CANVAS AREA -->
+        <main class="canvas-area" id="canvas-area">
+            <!-- 2D Canvas -->
+            <div id="canvas2d-container">
+                <canvas id="canvas2d"></canvas>
+                <div class="canvas-header-btns">
+                    <button class="canvas-header-btn active" id="icon-btn-2d" title="2D View">⊞</button>
+                    <button class="canvas-header-btn" id="icon-btn-3d" title="3D View">⬛</button>
+                </div>
+            </div>
+
+            <!-- 3D Canvas -->
+            <div id="canvas3d-container">
+                <button class="lighting-btn" id="lighting-btn">⚙️ Lighting</button>
+                <div class="lighting-panel" id="lighting-panel">
+                    <h3 style="margin-bottom:4px;">Lighting Controls</h3>
+                    <div>
+                        <label>Ambient Intensity <span id="ambient-val">0.5</span></label>
+                        <input type="range" id="ambient-slider" min="0" max="2" step="0.05" value="0.5"
+                            oninput="document.getElementById('ambient-val').textContent=this.value">
+                    </div>
+                    <div>
+                        <label>Directional Intensity <span id="dir-val">1.0</span></label>
+                        <input type="range" id="dir-slider" min="0" max="3" step="0.1" value="1.0"
+                            oninput="document.getElementById('dir-val').textContent=this.value">
+                    </div>
+                    <div>
+                        <label>Light Color</label>
+                        <input type="color" id="light-color" value="#ffffff"
+                            style="width:100%;height:30px;border-radius:4px;cursor:pointer;">
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <input type="checkbox" id="shadow-toggle" checked>
+                        <label for="shadow-toggle" style="margin:0;">Enable Shadows</label>
+                    </div>
+                </div>
+                <div class="room-info-overlay" id="room-info-overlay"></div>
+            </div>
+        </main>
+
+        <!-- RIGHT SIDEBAR -->
+        <aside class="sidebar-right">
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="furniture">Furniture</button>
+                <button class="tab-btn" data-tab="items">Items</button>
+                <button class="tab-btn" data-tab="models">Models</button>
+            </div>
+
+            <!-- Furniture tab -->
+            <div class="tab-content active" id="tab-furniture">
+                <div id="catalog-container"></div>
+            </div>
+
+            <!-- Items tab (placed furniture) -->
+            <div class="tab-content" id="tab-items">
+                <div class="placed-header">
+                    <h2>Placed Furniture</h2>
+                    <p>Modify or remove furniture items</p>
+                </div>
+                <div class="placed-list" id="placed-list"></div>
+            </div>
+
+            <!-- Models tab (3D models info) -->
+            <div class="tab-content" id="tab-models">
+                <div style="padding:20px;">
+                    <h2 style="margin-bottom:8px;">3D Models</h2>
+                    <p style="margin-bottom:16px;">Switch to 3D view to see realistic furniture models rendered with
+                        lighting and shadows.</p>
+                    <div style="background:var(--accent-light);border-radius:8px;padding:14px;">
+                        <p style="color:var(--accent-dark);font-size:.85rem;font-weight:500;">
+                            💡 All furniture items you place are rendered as 3D boxes in the 3D view, complete with
+                            ambient and directional lighting, shadow casting, and orbit camera controls.
+                        </p>
+                    </div>
+                    <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px;">
+                        <button class="btn btn-primary" onclick="document.getElementById('btn-view-3d').click()">Switch
+                            to 3D View →</button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Toast container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Scripts (order matters) -->
+    <script src="js/auth.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/furniture-data.js"></script>
+    <script src="js/canvas2d.js"></script>
+    <script src="js/canvas3d.js"></script>
+    <script src="js/editor.js"></script>
+
+    <!-- Room info overlay updater for 3D -->
+    <script>
+        // Update 3D room overlay whenever switching
+        const origSwitch = window.switchView;
+        setInterval(() => {
+            const overlay = document.getElementById('room-info-overlay');
+            if (!overlay) return;
+            const r = appState.currentRoom;
+            overlay.innerHTML = `Room: ${r.name}<br>Dimensions: ${r.width}m × ${r.length}m × ${r.height}m<br>Items: ${appState.placedFurniture.length}`;
+        }, 500);
+    </script>
+</body>
+
+</html>
