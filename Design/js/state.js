@@ -14,6 +14,10 @@ let appState = {
         height: 3,
         wallColor: '#FFFFFF',
         floorColor: '#D2848C',
+        windows: [
+            { wall: 'back', x: 0.5, y: 1.5, width: 1.2, height: 1.2 },
+            { wall: 'left', z: 0.5, y: 1.5, width: 1.2, height: 1.2 }
+        ]
     },
     placedFurniture: [],   // { id, catalogId, name, category, color, x, y, width, depth, height, rotation, scale }
 };

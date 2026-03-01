@@ -115,6 +115,38 @@ const C2D = (() => {
         appState.placedFurniture.forEach((item, idx) => {
             drawFurniture(item, idx === selectedIndex);
         });
+
+        // Windows
+        drawWindows();
+    }
+
+    function drawWindows() {
+        const area = getDrawArea();
+        const room = appState.currentRoom;
+        if (!room.windows) return;
+
+        ctx.strokeStyle = '#a8d8ea';
+        ctx.lineWidth = 6;
+
+        room.windows.forEach(win => {
+            if (win.wall === 'back') {
+                // Top wall (y=0)
+                const sx = area.x + (win.x * area.w) - (win.width * (area.w / room.width) / 2);
+                const sw = win.width * (area.w / room.width);
+                ctx.beginPath();
+                ctx.moveTo(sx, area.y);
+                ctx.lineTo(sx + sw, area.y);
+                ctx.stroke();
+            } else if (win.wall === 'left') {
+                // Left wall (x=0)
+                const sy = area.y + (win.z * area.h) - (win.height * (area.h / room.length) / 2);
+                const sh = win.height * (area.h / room.length);
+                ctx.beginPath();
+                ctx.moveTo(area.x, sy);
+                ctx.lineTo(area.x, sy + sh);
+                ctx.stroke();
+            }
+        });
     }
 
     function drawFurniture(item, selected) {

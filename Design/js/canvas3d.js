@@ -735,6 +735,217 @@ const C3D = (() => {
         return g;
     }
 
+    // ── BAR TABLE ─────────────────────────────────────────────────────────────
+    function makeBarTable(color) {
+        const g = new THREE.Group();
+        const woodMat = mat(color);
+        const metalMat = mat('#333333', { shininess: 80 });
+
+        // Circular top
+        const top = mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.04, 32), woodMat);
+        top.position.set(0, 1.05, 0);
+        g.add(top);
+
+        // Pedestal pole
+        const pole = mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.96, 16), metalMat);
+        pole.position.set(0, 0.55, 0);
+        g.add(pole);
+
+        // Circular base
+        const base = mesh(new THREE.CylinderGeometry(0.28, 0.30, 0.05, 32), metalMat);
+        base.position.set(0, 0.025, 0);
+        g.add(base);
+
+        return g;
+    }
+
+    // ── BENCH ─────────────────────────────────────────────────────────────────
+    function makeBench(color) {
+        const g = new THREE.Group();
+        const woodMat = mat(color);
+        const darkMat = mat(darken(color, 0.6));
+
+        // Seat
+        const seat = mesh(new THREE.BoxGeometry(1.2, 0.05, 0.4), woodMat);
+        seat.position.set(0, 0.45, 0);
+        g.add(seat);
+
+        // Legs (u-shaped frames at each end)
+        [[-0.5, 0], [0.5, 0]].forEach(([x]) => {
+            const leg = mesh(new THREE.BoxGeometry(0.04, 0.42, 0.36), darkMat);
+            leg.position.set(x, 0.21, 0);
+            g.add(leg);
+            // Foot
+            const foot = mesh(new THREE.BoxGeometry(0.08, 0.03, 0.38), darkMat);
+            foot.position.set(x, 0.015, 0);
+            g.add(foot);
+        });
+
+        // Supporting rail
+        const rail = mesh(new THREE.BoxGeometry(1.0, 0.04, 0.04), darkMat);
+        rail.position.set(0, 0.35, 0);
+        g.add(rail);
+
+        return g;
+    }
+
+    // ── OTTOMAN ───────────────────────────────────────────────────────────────
+    function makeOttoman(color) {
+        const g = new THREE.Group();
+        const mainMat = mat(color, { shininess: 30 });
+        const darkMat = mat(darken(color, 0.7));
+
+        // Padded body (cylinder with rounded top)
+        const body = mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.38, 32), mainMat);
+        body.position.set(0, 0.22, 0);
+        g.add(body);
+
+        // Padded top cap
+        const top = mesh(new THREE.SphereGeometry(0.3, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), mainMat);
+        top.position.set(0, 0.41, 0);
+        g.add(top);
+
+        // Base/feet
+        for (let i = 0; i < 4; i++) {
+            const angle = (i / 4) * Math.PI * 2;
+            const leg = mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.04, 12), darkMat);
+            leg.position.set(Math.cos(angle) * 0.22, 0.02, Math.sin(angle) * 0.22);
+            g.add(leg);
+        }
+
+        return g;
+    }
+
+    // ── CREDENZA ──────────────────────────────────────────────────────────────
+    function makeCredenza(color) {
+        const g = new THREE.Group();
+        const mainMat = mat(color);
+        const darkMat = mat(darken(color, 0.65));
+        const handleMat = mat('#C0C0C0', { shininess: 90 });
+
+        // Main body
+        const body = mesh(new THREE.BoxGeometry(1.5, 0.65, 0.4), mainMat);
+        body.position.set(0, 0.425, 0);
+        g.add(body);
+
+        // Top surface
+        const top = mesh(new THREE.BoxGeometry(1.54, 0.03, 0.42), darkMat);
+        top.position.set(0, 0.76, 0);
+        g.add(top);
+
+        // 3 doors
+        [-0.5, 0, 0.5].forEach(x => {
+            const door = mesh(new THREE.BoxGeometry(0.48, 0.60, 0.03), mainMat);
+            door.position.set(x, 0.425, 0.21);
+            g.add(door);
+            // Handle
+            const h = mesh(new THREE.BoxGeometry(0.02, 0.12, 0.02), handleMat);
+            h.position.set(x > 0 ? x - 0.18 : (x < 0 ? x + 0.18 : 0.2), 0.425, 0.23);
+            g.add(h);
+        });
+
+        // Tapered legs
+        [[-0.65, -0.15], [0.65, -0.15], [-0.65, 0.15], [0.65, 0.15]].forEach(([x, z]) => {
+            const leg = mesh(new THREE.CylinderGeometry(0.02, 0.015, 0.15, 8), darkMat);
+            leg.position.set(x, 0.075, z);
+            g.add(leg);
+        });
+
+        return g;
+    }
+
+    // ── SMALL PLANT ───────────────────────────────────────────────────────────
+    function makeSmallPlant(color) {
+        const g = new THREE.Group();
+        const potMat = mat('#F0EAD6'); // Ceramic
+        const plantColor = new THREE.Color(color);
+
+        // Pot
+        const pot = mesh(new THREE.CylinderGeometry(0.1, 0.07, 0.12, 24), potMat);
+        pot.position.set(0, 0.06, 0);
+        g.add(pot);
+
+        // Cactus segments
+        const cactusMat = mat(plantColor);
+        const seg1 = mesh(new THREE.SphereGeometry(0.08, 16, 12), cactusMat);
+        seg1.scale.set(1, 1.4, 1);
+        seg1.position.set(0, 0.2, 0);
+        g.add(seg1);
+
+        const seg2 = mesh(new THREE.SphereGeometry(0.04, 12, 8), cactusMat);
+        seg2.position.set(0.05, 0.3, 0.03);
+        g.add(seg2);
+
+        const seg3 = mesh(new THREE.SphereGeometry(0.035, 12, 8), cactusMat);
+        seg3.position.set(-0.04, 0.28, -0.04);
+        g.add(seg3);
+
+        return g;
+    }
+
+    // ── DECORATIVE VASE ───────────────────────────────────────────────────────
+    function makeVase(color) {
+        const g = new THREE.Group();
+        const vaseMat = mat(color, { shininess: 80 });
+        const flowerMat = mat('#e74c3c');
+
+        // Elegant curved body
+        const b1 = mesh(new THREE.CylinderGeometry(0.08, 0.15, 0.3, 24), vaseMat);
+        b1.position.set(0, 0.15, 0);
+        g.add(b1);
+
+        const b2 = mesh(new THREE.CylinderGeometry(0.15, 0.06, 0.4, 24), vaseMat);
+        b2.position.set(0, 0.5, 0);
+        g.add(b2);
+
+        const rim = mesh(new THREE.TorusGeometry(0.08, 0.015, 8, 24), vaseMat);
+        rim.rotation.x = Math.PI / 2;
+        rim.position.set(0, 0.7, 0);
+        g.add(rim);
+
+        // Stems and flowers
+        const stemMat = mat('#2d6a4f');
+        for (let i = 0; i < 3; i++) {
+            const angle = (i / 3) * Math.PI * 2;
+            const stem = mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.6, 6), stemMat);
+            stem.rotation.z = 0.2;
+            stem.rotation.y = angle;
+            stem.position.set(Math.cos(angle) * 0.05, 0.8, Math.sin(angle) * 0.05);
+            g.add(stem);
+
+            const flower = mesh(new THREE.SphereGeometry(0.03, 8, 8), flowerMat);
+            flower.position.set(Math.cos(angle) * 0.15, 1.1, Math.sin(angle) * 0.15);
+            g.add(flower);
+        }
+
+        return g;
+    }
+
+    // ── FLOOR MIRROR ──────────────────────────────────────────────────────────
+    function makeFloorMirror(color) {
+        const g = new THREE.Group();
+        const frameMat = mat(color);
+        const mirrorMat = mat('#a8d8ea', { shininess: 120, reflectivity: 1, transparent: true, opacity: 0.8 });
+
+        // Outer frame
+        const frame = mesh(new THREE.BoxGeometry(0.8, 1.8, 0.08), frameMat);
+        frame.position.set(0, 0.9, 0);
+        g.add(frame);
+
+        // Mirror surface
+        const surf = mesh(new THREE.PlaneGeometry(0.68, 1.68), mirrorMat);
+        surf.position.set(0, 0.9, 0.045);
+        g.add(surf);
+
+        // Stand (A-frame at back)
+        const stand = mesh(new THREE.BoxGeometry(0.7, 1.7, 0.04), frameMat);
+        stand.position.set(0, 0.85, -0.4);
+        stand.rotation.x = 0.2;
+        g.add(stand);
+
+        return g;
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     //  MODEL DISPATCHER — pick the right factory per catalog ID
     // ─────────────────────────────────────────────────────────────────────────
@@ -743,22 +954,29 @@ const C3D = (() => {
         switch (item.catalogId) {
             case 'sofa_3seat': return makeSofa(color, 2.1);
             case 'sofa_2seat': return makeSofa(color, 1.55);
-            case 'armchair': return makeArmchair(color);
+            case 'ottoman': return makeOttoman(color);
             case 'bed_queen': return makeBed(color, 1.6, 2.1);
             case 'bed_single': return makeBed(color, 1.0, 2.0);
             case 'dining_table': return makeDiningTable(color, 1.8, 0.9);
             case 'side_table': return makeSideTable(color);
             case 'coffee_table': return makeCoffeeTable(color);
+            case 'bar_table': return makeBarTable(color);
             case 'dining_chair': return makeChair(color);
             case 'office_chair': return makeOfficeChair(color);
+            case 'armchair': return makeArmchair(color);
+            case 'bench': return makeBench(color);
             case 'wardrobe': return makeWardrobe(color);
             case 'storage_cab': return makeStorageCabinet(color);
+            case 'credenza': return makeCredenza(color);
             case 'tv_unit': return makeTVUnit(color);
             case 'bookshelf': return makeBookshelf(color);
             case 'desk': return makeDesk(color);
             case 'plant_large': return makePlant(color);
+            case 'plant_small': return makeSmallPlant(color);
             case 'lamp_floor': return makeFloorLamp(color);
             case 'rug': return makeRug(color);
+            case 'vase_floor': return makeVase(color);
+            case 'mirror_floor': return makeFloorMirror(color);
             default: return makeChair(color); // fallback
         }
     }
@@ -878,6 +1096,9 @@ const C3D = (() => {
             const obj = scene.getObjectByName(n);
             if (obj) scene.remove(obj);
         });
+        // Remove existing windows
+        const toRemove = scene.children.filter(c => c.name && c.name.startsWith('window_'));
+        toRemove.forEach(w => scene.remove(w));
 
         // Floor with subtle texture via vertex colors
         const floorMesh = mesh(new THREE.PlaneGeometry(W, L, 10, 10),
@@ -919,10 +1140,54 @@ const C3D = (() => {
             scene.add(sm);
         });
 
+        // Windows
+        if (room.windows) {
+            room.windows.forEach((win, idx) => {
+                const wGroup = makeWindowModel(win.width, win.height);
+                wGroup.name = `window_${idx}`;
+                if (win.wall === 'back') {
+                    wGroup.position.set(win.x * W, win.y, 0.02);
+                } else if (win.wall === 'left') {
+                    wGroup.rotation.y = Math.PI / 2;
+                    wGroup.position.set(0.02, win.y, win.z * L);
+                }
+                scene.add(wGroup);
+            });
+        }
+
         // Reframe camera to room
         camera.position.set(W * 0.85 + 3.5, H + 2.5, L * 0.85 + 3.5);
         camera.lookAt(W / 2, H / 4, L / 2);
         if (controls) controls.target.set(W / 2, H / 4, L / 2);
+    }
+
+    function makeWindowModel(width, height) {
+        const g = new THREE.Group();
+        const frameMat = mat('#F0EDE8');
+        const glassMat = mat('#a8d8ea', { transparent: true, opacity: 0.4, shininess: 100 });
+        const frameT = 0.06; // frame thickness
+
+        // Glass
+        const glass = mesh(new THREE.PlaneGeometry(width - frameT, height - frameT), glassMat);
+        g.add(glass);
+
+        // Frame Top/Bottom
+        const fH = mesh(new THREE.BoxGeometry(width, frameT, 0.04), frameMat);
+        const fTop = fH.clone(); fTop.position.y = height / 2; g.add(fTop);
+        const fBot = fH.clone(); fBot.position.y = -height / 2; g.add(fBot);
+
+        // Frame Sides
+        const fV = mesh(new THREE.BoxGeometry(frameT, height + frameT, 0.04), frameMat);
+        const fLeft = fV.clone(); fLeft.position.x = -width / 2; g.add(fLeft);
+        const fRight = fV.clone(); fRight.position.x = width / 2; g.add(fRight);
+
+        // Mullions (cross bars)
+        const mullionV = mesh(new THREE.BoxGeometry(0.02, height, 0.02), frameMat);
+        g.add(mullionV);
+        const mullionH = mesh(new THREE.BoxGeometry(width, 0.02, 0.02), frameMat);
+        g.add(mullionH);
+
+        return g;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
