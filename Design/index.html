@@ -86,11 +86,17 @@
 
   <!-- Auth logic (must load before inline script) -->
   <script src="js/auth.js"></script>
+  <script src="utils/api-client.js"></script>
 
   <!-- separate JavaScript -->
   <script>
     (function () {
       "use strict";
+
+      // ── Check if served from web server ──
+      if (window.location.protocol === 'file:') {
+        alert("🚨 You're opening this file directly. PHP APIs will NOT work via file://. Please use XAMPP and visit http://localhost/...");
+      }
 
       // ── Redirect if already authenticated ──
       if (typeof authGetUser === 'function' && authGetUser()) {
@@ -228,7 +234,7 @@
         });
       }
 
-      // ---------- 4. login submit — wired to auth.js ----------
+      // ---------- 4. login submit — wired to API ----------
       const loginForm = document.getElementById('loginForm');
       const loginBtn = document.getElementById('loginBtn');
 
@@ -239,7 +245,7 @@
       if (loginForm) loginForm.insertBefore(errMsg, document.getElementById('loginBtn'));
 
       if (loginForm) {
-        loginForm.addEventListener('submit', (e) => {
+        loginForm.addEventListener('submit', async (e) => {
           e.preventDefault();
           const email = document.getElementById('email')?.value.trim();
           const pass = document.getElementById('password')?.value;
@@ -250,43 +256,41 @@
             loginBtn.disabled = true;
           }
 
-          setTimeout(() => {
-            if (typeof authLogin === 'function' && authLogin(email, pass)) {
+          try {
+            const data = await ApiClient.login(email, pass);
+            if (data.success) {
               // ✅ Success — fly to editor
               errMsg.style.display = 'none';
               if (loginBtn) loginBtn.querySelector('span').textContent = '⚡ launching…';
+
+              // Update session storage for compatibility with auth.js
+              sessionStorage.setItem('wala_session', JSON.stringify(data.user));
+
               setTimeout(() => { window.location.href = 'editor.html'; }, 500);
             } else {
-              // ❌ Failed — show inline error
-              errMsg.textContent = '⚠ Invalid credentials — try designer@designcompiler.com';
-              errMsg.style.display = 'block';
-              if (loginBtn) {
-                loginBtn.querySelector('span').textContent = 'enter atmosphere';
-                loginBtn.disabled = false;
-              }
-              document.getElementById('password').value = '';
-              document.getElementById('password').focus();
+              throw new Error(data.error || 'Invalid credentials');
             }
-          }, 400);
+          } catch (error) {
+            // ❌ Failed — show inline error
+            errMsg.textContent = `⚠ ${error.message}`;
+            errMsg.style.display = 'block';
+            if (loginBtn) {
+              loginBtn.querySelector('span').textContent = 'enter atmosphere';
+              loginBtn.disabled = false;
+            }
+            document.getElementById('password').value = '';
+            document.getElementById('password').focus();
+          }
         });
       }
 
-      // hover effect for loginBtn is mostly CSS, but we can add a tiny glitch class (optional)
-      if (loginBtn) {
-        loginBtn.addEventListener('mouseenter', () => {
-          loginBtn.classList.add('hover-active');
-        });
-        loginBtn.addEventListener('mouseleave', () => {
-          loginBtn.classList.remove('hover-active');
-        });
-      }
-
-      // signup link hover ripple (just visual enhancement)
+      // ... keep other event listeners (hover etc) ...
+      // Update signup link behavior
       const signupLink = document.getElementById('futuristicSignup');
       if (signupLink) {
         signupLink.addEventListener('click', (e) => {
           e.preventDefault();
-          alert('⚡ initiate project genesis (signup flow demo)');
+          window.location.href = 'signup.html';
         });
       }
 

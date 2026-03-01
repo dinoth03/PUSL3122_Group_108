@@ -3,7 +3,7 @@
 const AUTH_KEY = 'wala_session';
 
 const DEMO_USERS = [
-    { email: 'designer@designcompiler.com', password: 'Designer123!', name: 'Alex Designer' },
+    { email: 'group108@gmail.com', password: '1234', name: 'Alex Designer' },
     { email: 'admin@designcompiler.com', password: 'Admin123!', name: 'Sam Admin' },
 ];
 
