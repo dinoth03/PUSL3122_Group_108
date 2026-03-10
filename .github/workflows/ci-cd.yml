@@ -90,7 +90,7 @@ jobs:
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
@@ -120,7 +120,7 @@ jobs:
       - name: Apply test database schema
         run: |
           echo "Applying schema to test database..."
-          mysql -h 127.0.0.1 -u root hci_design_test < Design/database/schema.sql
+          mysql -h 127.0.0.1 -u root ${{ env.DB_NAME }} < Design/database/schema.sql
           echo "Schema applied successfully."
 
       - name: Install Composer and PHPUnit
@@ -133,11 +133,13 @@ jobs:
           vendor/bin/phpunit \
             --configuration phpunit.xml \
             --coverage-text \
+            --coverage-clover coverage.xml \
             --log-junit test-results.xml \
             --display-failures \
             --display-errors \
             --display-warnings \
-            --testdox
+            --testdox \
+            --verbose
         env:
           DB_HOST: ${{ env.DB_HOST }}
           DB_NAME: ${{ env.DB_NAME }}
