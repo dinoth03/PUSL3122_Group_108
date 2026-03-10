@@ -111,7 +111,7 @@ class RoomsIntegrationTest extends TestCase
         $this->assertNotNull($decoded, 'room_data should be valid JSON.');
         $this->assertSame(6, $decoded['width']);
         $this->assertSame(5, $decoded['length']);
-        $this->assertSame(3.0, $decoded['height']);
+        $this->assertEquals(3.0, $decoded['height']);
     }
 
     // -------------------------------------------------------

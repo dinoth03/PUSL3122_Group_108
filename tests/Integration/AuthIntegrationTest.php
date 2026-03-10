@@ -74,10 +74,13 @@ class AuthIntegrationTest extends TestCase
             'INSERT INTO users (name, email, password) VALUES (?, ?, ?)'
         );
         $stmt->bind_param('sss', $name, $email, $password);
-        $result = $stmt->execute();
-
-        // MySQL should reject duplicate unique email
-        $this->assertFalse($result, 'Duplicate email should be rejected by the UNIQUE constraint.');
+        
+        try {
+            $result = $stmt->execute();
+            $this->assertFalse($result, 'Duplicate email should have been rejected.');
+        } catch (\mysqli_sql_exception $e) {
+            $this->assertStringContainsString('Duplicate entry', $e->getMessage());
+        }
     }
 
     public function testRegisteredUserCanBeFoundByEmail(): void
