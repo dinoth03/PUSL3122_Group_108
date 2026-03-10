@@ -133,16 +133,17 @@ jobs:
       - name: Run PHPUnit tests with coverage
         run: |
           if [ ! -f vendor/bin/phpunit ]; then echo "PHPUnit not found in vendor/bin. Did composer install fail?"; exit 1; fi
+      - name: Run PHPUnit tests with coverage
+        run: |
+          if [ ! -f vendor/bin/phpunit ]; then echo "PHPUnit not found!"; exit 1; fi
           vendor/bin/phpunit \
             --configuration phpunit.xml \
-            --coverage-text \
             --coverage-clover coverage.xml \
             --log-junit test-results.xml \
-            --display-failures \
             --display-errors \
             --display-warnings \
-            --testdox \
-            --verbose
+            --display-deprecations \
+            --testdox
         env:
           DB_HOST: ${{ env.DB_HOST }}
           DB_NAME: ${{ env.DB_NAME }}

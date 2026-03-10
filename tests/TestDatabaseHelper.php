@@ -52,10 +52,13 @@ class TestDatabaseHelper
     public static function applySchema(): void
     {
         $conn   = self::getConnection();
-        $schema = file_get_contents(__DIR__ . '/../Design/database/schema.sql');
+        $projectRoot = dirname(__DIR__);
+        $schemaPath = $projectRoot . DIRECTORY_SEPARATOR . 'Design' . DIRECTORY_SEPARATOR . 'database' . DIRECTORY_SEPARATOR . 'schema.sql';
+        
+        $schema = file_get_contents($schemaPath);
 
         if ($schema === false) {
-            throw new RuntimeException('Could not read Design/database/schema.sql');
+            throw new RuntimeException('Could not read schema at: ' . $schemaPath);
         }
 
         // Execute each statement individually (multi_query can be unreliable)
