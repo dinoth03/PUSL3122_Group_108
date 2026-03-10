@@ -119,6 +119,8 @@ jobs:
           done
 
       - name: Apply test database schema
+        env:
+          MYSQL_PWD: ${{ env.DB_PASS }}
         run: |
           echo "Applying schema to test database..."
           mysql -h 127.0.0.1 -u root ${{ env.DB_NAME }} < Design/database/schema.sql
