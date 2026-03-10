@@ -20,6 +20,7 @@ env:
   DB_USER: ${{ secrets.DB_USER || 'root' }}
   DB_PASS: ${{ secrets.DB_PASS || '' }}
   APP_ENV: ${{ secrets.APP_ENV || 'testing' }}
+  XDEBUG_MODE: coverage
 
 # =======================================================
 # JOB 1 - Code Quality and Linting
@@ -102,7 +103,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ env.PHP_VERSION }}
-          extensions: mysqli, pdo, pdo_mysql, json
+          extensions: mysqli, pdo, pdo_mysql, json, dom, xml, mbstring, curl
           coverage: xdebug
 
       - name: Wait for MySQL to be ready
@@ -128,11 +129,15 @@ jobs:
 
       - name: Run PHPUnit tests with coverage
         run: |
+          if [ ! -f vendor/bin/phpunit ]; then echo "PHPUnit not found in vendor/bin. Did composer install fail?"; exit 1; fi
           vendor/bin/phpunit \
             --configuration phpunit.xml \
             --coverage-text \
-            --coverage-clover coverage.xml \
-            --log-junit test-results.xml
+            --log-junit test-results.xml \
+            --display-failures \
+            --display-errors \
+            --display-warnings \
+            --testdox
         env:
           DB_HOST: ${{ env.DB_HOST }}
           DB_NAME: ${{ env.DB_NAME }}

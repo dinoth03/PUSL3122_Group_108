@@ -1,11 +1,12 @@
 <?php
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "hci_design";
+$servername = getenv('DB_HOST') ?: "localhost";
+$username   = getenv('DB_USER') ?: "root";
+$password   = getenv('DB_PASS') !== false ? getenv('DB_PASS') : "";
+$dbname     = getenv('DB_NAME') ?: "hci_design";
+$port       = getenv('DB_PORT') ?: "3306";
 
 // Create connection
-$conn = new mysqli($servername, $username, $password);
+$conn = new mysqli($servername, $username, $password, "", $port);
 
 // Check connection
 if ($conn->connect_error) {
