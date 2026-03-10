@@ -1,0 +1,297 @@
+name: CI/CD Pipeline - PUSL3122 Group 108 (Design Compiler)
+
+# -------------------------------------------------------
+# Triggers: run on push/PR to main and develop branches
+# -------------------------------------------------------
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+# -------------------------------------------------------
+# Global environment variables
+# -------------------------------------------------------
+env:
+  PHP_VERSION: ${{ secrets.PHP_VERSION || '8.2' }}
+  DB_HOST: ${{ secrets.DB_HOST || '127.0.0.1' }}
+  DB_PORT: ${{ secrets.DB_PORT || '3306' }}
+  DB_NAME: ${{ secrets.DB_NAME || 'hci_design' }}
+  DB_USER: ${{ secrets.DB_USER || 'root' }}
+  DB_PASS: ${{ secrets.DB_PASS || '' }}
+  APP_ENV: ${{ secrets.APP_ENV || 'testing' }}
+
+# =======================================================
+# JOB 1 - Code Quality and Linting
+# Checks PHP syntax errors and JS code style issues
+# =======================================================
+jobs:
+  code-quality:
+    name: Code Quality and Linting
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP ${{ env.PHP_VERSION }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mysqli, pdo, pdo_mysql, json
+          coverage: none
+
+      - name: PHP Syntax Check
+        run: |
+          echo "Running PHP Lint on all .php files..."
+          find Design -name "*.php" | while read file; do
+            php -l "$file" || exit 1
+          done
+          echo "All PHP files passed syntax check."
+
+      - name: Install Composer dependencies
+        run: |
+          if [ -f composer.json ]; then
+            composer install --no-progress --prefer-dist --optimize-autoloader
+          else
+            echo "No composer.json found - skipping."
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+
+      - name: Validate JavaScript syntax
+        run: |
+          echo "Checking JS files for syntax errors..."
+          find Design/js -name "*.js" | while read file; do
+            node --check "$file" && echo "  OK: $file" || exit 1
+          done
+          echo "All JS files passed syntax check."
+
+  # =======================================================
+  # JOB 2 - PHP Unit and Integration Tests
+  # Runs PHPUnit tests against a real MySQL test database
+  # =======================================================
+  php-tests:
+    name: PHP Unit and Integration Tests
+    runs-on: ubuntu-latest
+    needs: code-quality
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.DB_PASS || '' }}
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_DATABASE: ${{ secrets.DB_NAME || 'hci_design' }}
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP ${{ env.PHP_VERSION }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mysqli, pdo, pdo_mysql, json
+          coverage: xdebug
+
+      - name: Wait for MySQL to be ready
+        run: |
+          echo "Waiting for MySQL..."
+          for i in $(seq 1 30); do
+            if mysqladmin ping -h 127.0.0.1 -u root --silent; then
+              echo "MySQL is ready."
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Apply test database schema
+        run: |
+          echo "Applying schema to test database..."
+          mysql -h 127.0.0.1 -u root hci_design_test < Design/database/schema.sql
+          echo "Schema applied successfully."
+
+      - name: Install Composer and PHPUnit
+        run: |
+          composer install --no-progress --prefer-dist --optimize-autoloader
+
+      - name: Run PHPUnit tests with coverage
+        run: |
+          vendor/bin/phpunit \
+            --configuration phpunit.xml \
+            --coverage-text \
+            --coverage-clover coverage.xml \
+            --log-junit test-results.xml
+        env:
+          DB_HOST: ${{ env.DB_HOST }}
+          DB_NAME: ${{ env.DB_NAME }}
+          DB_USER: ${{ env.DB_USER }}
+          DB_PASS: ${{ env.DB_PASS }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            test-results.xml
+            coverage.xml
+          retention-days: 30
+
+  # =======================================================
+  # JOB 3 - Security Scanning
+  # Checks for common PHP security misconfigurations
+  # =======================================================
+  security-scan:
+    name: Security Vulnerability Scan
+    runs-on: ubuntu-latest
+    needs: code-quality
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Scan for hardcoded plain-text passwords
+        run: |
+          echo "Scanning for potential hardcoded credentials..."
+          if grep -rn --include="*.php" --include="*.js" \
+             -E "password\s*=\s*['\"][^'\"]{4,}['\"]" \
+             Design/ | grep -v "password_hash\|password_verify\|password_empty_check\|test\|example"; then
+            echo "WARNING: Potential hardcoded credentials found. Review the lines above."
+          else
+            echo "No obvious hardcoded credentials detected."
+          fi
+
+      - name: Check for raw SQL injection patterns
+        run: |
+          echo "Checking for unsafe raw SQL patterns..."
+          if grep -rn --include="*.php" -E "mysqli_query\s*\(\s*\\\$conn\s*,\s*\".*\\\$_(POST|GET|REQUEST)" Design/; then
+            echo "WARNING: Potential SQL injection risk detected. Use prepared statements."
+            exit 1
+          else
+            echo "No raw SQL injection patterns found. Prepared statements appear to be in use."
+          fi
+
+      - name: Check for wildcard CORS headers
+        run: |
+          echo "Checking for wildcard CORS headers..."
+          if grep -rn "Access-Control-Allow-Origin: \*" Design/api/; then
+            echo "WARNING: Wildcard CORS header detected. Consider restricting the allowed origin."
+          else
+            echo "No wildcard CORS headers found."
+          fi
+
+      - name: Check for exposed error output
+        run: |
+          echo "Checking for direct error exposure to client..."
+          if grep -rn --include="*.php" "ini_set.*display_errors.*1\|error_reporting.*E_ALL" Design/; then
+            echo "WARNING: Error display may be enabled. Disable in production."
+          else
+            echo "No exposed error output settings detected."
+          fi
+
+  # =======================================================
+  # JOB 4 - Frontend Validation
+  # Verifies HTML files and JavaScript files are present
+  # and free of syntax errors
+  # =======================================================
+  frontend-validation:
+    name: Frontend HTML and JS Validation
+    runs-on: ubuntu-latest
+    needs: code-quality
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+
+      - name: Verify critical application files exist
+        run: |
+          echo "Verifying all critical application files are present..."
+          FILES=(
+            "Design/index.html"
+            "Design/editor.html"
+            "Design/signup.html"
+            "Design/rooms.html"
+            "Design/designs.html"
+            "Design/api/auth.php"
+            "Design/api/designs.php"
+            "Design/api/rooms.php"
+            "Design/database/db_connect.php"
+            "Design/database/schema.sql"
+            "Design/js/auth.js"
+            "Design/js/editor.js"
+            "Design/js/canvas2d.js"
+            "Design/js/canvas3d.js"
+            "Design/utils/helpers.php"
+          )
+          ALL_FOUND=true
+          for file in "${FILES[@]}"; do
+            if [ -f "$file" ]; then
+              echo "  Found: $file"
+            else
+              echo "  MISSING: $file"
+              ALL_FOUND=false
+            fi
+          done
+          if [ "$ALL_FOUND" = false ]; then
+            echo "One or more critical files are missing."
+            exit 1
+          fi
+          echo "All critical application files are present."
+
+      - name: Validate JavaScript files
+        run: |
+          echo "Checking all JS files for syntax errors..."
+          for jsfile in Design/js/*.js; do
+            node --check "$jsfile" && echo "  OK: $jsfile" || exit 1
+          done
+          echo "All JS files are valid."
+
+  # =======================================================
+  # JOB 5 - Pipeline Summary
+  # Generates a final pass/fail summary of all jobs
+  # =======================================================
+  pipeline-summary:
+    name: Pipeline Summary
+    runs-on: ubuntu-latest
+    needs: [code-quality, php-tests, security-scan, frontend-validation]
+    if: always()
+
+    steps:
+      - name: Print pipeline summary
+        run: |
+          echo "=================================================="
+          echo "  PUSL3122 Group 108 - CI/CD Pipeline Complete"
+          echo "  Application: Design Compiler"
+          echo "  Stack: PHP 8.2 + MySQL 8.0 + HTML + Vanilla JS"
+          echo "=================================================="
+          echo ""
+          echo "  Triggered by : ${{ github.event_name }}"
+          echo "  Branch       : ${{ github.ref_name }}"
+          echo "  Commit SHA   : ${{ github.sha }}"
+          echo "  Run ID       : ${{ github.run_id }}"
+          echo ""
+          echo "  Jobs executed:"
+          echo "    - Code Quality and Linting"
+          echo "    - PHP Unit and Integration Tests"
+          echo "    - Security Vulnerability Scan"
+          echo "    - Frontend HTML and JS Validation"
+          echo ""
+          echo "  Review the Artifacts tab for detailed test and coverage reports."
+          echo "=================================================="

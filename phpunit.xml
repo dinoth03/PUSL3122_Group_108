@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         stopOnFailure="false"
+         displayDetailsOnTestsThatTriggerErrors="true"
+         displayDetailsOnTestsThatTriggerWarnings="true"
+>
+    <!-- Test suite definitions -->
+    <testsuites>
+        <testsuite name="Unit Tests">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Integration Tests">
+            <directory>tests/Integration</directory>
+        </testsuite>
+    </testsuites>
+
+    <!-- Code coverage: which source files to measure -->
+    <source>
+        <include>
+            <directory>Design/api</directory>
+            <directory>Design/utils</directory>
+            <directory>Design/database</directory>
+        </include>
+        <exclude>
+            <file>Design/database/db_connect.php</file>
+        </exclude>
+    </source>
+
+    <!-- Environment variables available to all tests -->
+    <php>
+        <env name="APP_ENV"   value="testing"/>
+        <env name="DB_HOST"   value="127.0.0.1"/>
+        <env name="DB_NAME"   value="hci_design"/>
+        <env name="DB_USER"   value="root"/>
+        <env name="DB_PASS"   value=""/>
+        <env name="DB_PORT"   value="3306"/>
+    </php>
+</phpunit>
