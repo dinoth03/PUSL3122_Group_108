@@ -21,7 +21,7 @@ env:
   DB_PASS: ${{ secrets.DB_PASS || '' }}
   APP_ENV: ${{ secrets.APP_ENV || 'testing' }}
   XDEBUG_MODE: coverage
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 # =======================================================
 # JOB 1 - Code Quality and Linting
@@ -133,11 +133,8 @@ jobs:
 
       - name: Run PHPUnit tests with coverage
         run: |
-          if [ ! -f vendor/bin/phpunit ]; then echo "PHPUnit not found in vendor/bin. Did composer install fail?"; exit 1; fi
-      - name: Run PHPUnit tests with coverage
-        run: |
           if [ ! -f vendor/bin/phpunit ]; then echo "PHPUnit not found!"; exit 1; fi
-          vendor/bin/phpunit \
+          php vendor/bin/phpunit \
             --configuration phpunit.xml \
             --coverage-clover coverage.xml \
             --log-junit test-results.xml \
