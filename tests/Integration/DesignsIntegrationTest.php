@@ -31,7 +31,6 @@ class DesignsIntegrationTest extends TestCase
 
         // Clear tables in dependency order
         TestDatabaseHelper::clearTable('designs');
-        TestDatabaseHelper::clearTable('rooms');
         TestDatabaseHelper::clearTable('users');
 
         // Insert a user to own the designs
@@ -59,7 +58,6 @@ class DesignsIntegrationTest extends TestCase
     public static function tearDownAfterClass(): void
     {
         TestDatabaseHelper::clearTable('designs');
-        TestDatabaseHelper::clearTable('rooms');
         TestDatabaseHelper::clearTable('users');
     }
 

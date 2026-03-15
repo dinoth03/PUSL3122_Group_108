@@ -38,11 +38,6 @@ class FileStructureTest extends TestCase
         $this->assertFileExists($this->root . '/Design/api/designs.php');
     }
 
-    public function testRoomsPhpExists(): void
-    {
-        $this->assertFileExists($this->root . '/Design/api/rooms.php');
-    }
-
     public function testHelpersPhpExists(): void
     {
         $this->assertFileExists($this->root . '/Design/utils/helpers.php');
@@ -81,12 +76,6 @@ class FileStructureTest extends TestCase
         $this->assertStringContainsString('designs', $content);
     }
 
-    public function testSchemaSqlContainsRoomsTable(): void
-    {
-        $content = file_get_contents($this->root . '/Design/database/schema.sql');
-        $this->assertStringContainsString('rooms', $content);
-    }
-
     // -------------------------------------------------------
     // HTML front-end files
     // -------------------------------------------------------
@@ -104,11 +93,6 @@ class FileStructureTest extends TestCase
     public function testSignupHtmlExists(): void
     {
         $this->assertFileExists($this->root . '/Design/signup.html');
-    }
-
-    public function testRoomsHtmlExists(): void
-    {
-        $this->assertFileExists($this->root . '/Design/rooms.html');
     }
 
     public function testDesignsHtmlExists(): void
@@ -178,18 +162,6 @@ class FileStructureTest extends TestCase
     {
         $content = file_get_contents($this->root . '/Design/api/designs.php');
         $this->assertStringContainsString("case 'delete':", $content);
-    }
-
-    public function testRoomsPhpContainsSaveCase(): void
-    {
-        $content = file_get_contents($this->root . '/Design/api/rooms.php');
-        $this->assertStringContainsString("case 'save':", $content);
-    }
-
-    public function testRoomsPhpContainsLoadCase(): void
-    {
-        $content = file_get_contents($this->root . '/Design/api/rooms.php');
-        $this->assertStringContainsString("case 'load':", $content);
     }
 
     public function testAuthPhpUsesPreparedStatements(): void

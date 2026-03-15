@@ -21,6 +21,7 @@ env:
   DB_PASS: ${{ secrets.DB_PASS || '' }}
   APP_ENV: ${{ secrets.APP_ENV || 'testing' }}
   XDEBUG_MODE: coverage
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 # =======================================================
 # JOB 1 - Code Quality and Linting
@@ -239,11 +240,9 @@ jobs:
             "Design/index.html"
             "Design/editor.html"
             "Design/signup.html"
-            "Design/rooms.html"
             "Design/designs.html"
             "Design/api/auth.php"
             "Design/api/designs.php"
-            "Design/api/rooms.php"
             "Design/database/db_connect.php"
             "Design/database/schema.sql"
             "Design/js/auth.js"

@@ -61,10 +61,12 @@ class TestDatabaseHelper
             throw new RuntimeException('Could not read schema at: ' . $schemaPath);
         }
 
+        $schema = preg_replace('/^\s*--.*$/m', '', $schema);
+
         // Execute each statement individually (multi_query can be unreliable)
         $statements = array_filter(
             array_map('trim', explode(';', $schema)),
-            fn(string $s) => $s !== '' && !str_starts_with(ltrim($s), '--')
+            fn(string $s) => $s !== ''
         );
 
         foreach ($statements as $statement) {

@@ -29,7 +29,6 @@ class AuthIntegrationTest extends TestCase
         self::$conn = TestDatabaseHelper::getConnection();
         TestDatabaseHelper::applySchema();
         TestDatabaseHelper::clearTable('designs');
-        TestDatabaseHelper::clearTable('rooms');
         TestDatabaseHelper::clearTable('users');
     }
 
@@ -40,7 +39,6 @@ class AuthIntegrationTest extends TestCase
     public static function tearDownAfterClass(): void
     {
         TestDatabaseHelper::clearTable('designs');
-        TestDatabaseHelper::clearTable('rooms');
         TestDatabaseHelper::clearTable('users');
     }
 
