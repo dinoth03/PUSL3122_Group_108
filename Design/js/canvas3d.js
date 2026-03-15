@@ -946,6 +946,349 @@ const C3D = (() => {
         return g;
     }
 
+    // ── WINDOW FRAME ──────────────────────────────────────────────────────────
+    function makeWindow(color) {
+        const g = new THREE.Group();
+        const frameMat = mat(color);
+        const glassMat = mat('#AED6F1', { transparent: true, opacity: 0.45, shininess: 120 });
+        const darkMat = mat(darken(color, 0.65));
+
+        // Outer frame
+        const outerH = mesh(new THREE.BoxGeometry(1.0, 0.06, 0.06), frameMat);
+        outerH.position.set(0, 1.2, 0); g.add(outerH);
+        const outerHL = mesh(new THREE.BoxGeometry(1.0, 0.06, 0.06), frameMat);
+        outerHL.position.set(0, 0.06, 0); g.add(outerHL);
+        const outerVL = mesh(new THREE.BoxGeometry(0.06, 1.2, 0.06), frameMat);
+        outerVL.position.set(-0.47, 0.63, 0); g.add(outerVL);
+        const outerVR = mesh(new THREE.BoxGeometry(0.06, 1.2, 0.06), frameMat);
+        outerVR.position.set(0.47, 0.63, 0); g.add(outerVR);
+
+        // Glass panes (2 side by side)
+        [-0.24, 0.24].forEach(x => {
+            const pane = mesh(new THREE.BoxGeometry(0.38, 1.06, 0.02), glassMat);
+            pane.position.set(x, 0.63, 0); g.add(pane);
+        });
+
+        // Centre mullion
+        const mullion = mesh(new THREE.BoxGeometry(0.04, 1.10, 0.06), darkMat);
+        mullion.position.set(0, 0.63, 0); g.add(mullion);
+
+        // Horizontal bar
+        const bar = mesh(new THREE.BoxGeometry(0.94, 0.04, 0.06), darkMat);
+        bar.position.set(0, 0.63, 0); g.add(bar);
+
+        return g;
+    }
+
+    // ── SINGLE DOOR ───────────────────────────────────────────────────────────
+    function makeDoor(color) {
+        const g = new THREE.Group();
+        const doorMat = mat(color);
+        const darkMat = mat(darken(color, 0.6));
+        const handleMat = mat('#C0C0C0', { shininess: 100 });
+
+        // Door slab
+        const slab = mesh(new THREE.BoxGeometry(0.9, 2.1, 0.05), doorMat);
+        slab.position.set(0, 1.05, 0); g.add(slab);
+
+        // Recessed panels (2 vertical)
+        [0.56, 1.54].forEach(y => {
+            const panel = mesh(new THREE.BoxGeometry(0.68, 0.48, 0.02), darkMat);
+            panel.position.set(0, y, 0.04); g.add(panel);
+        });
+
+        // Handle
+        const handle = mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.11, 8), handleMat);
+        handle.rotation.z = Math.PI / 2;
+        handle.position.set(0.35, 1.05, 0.04); g.add(handle);
+
+        // Handle rose
+        const rose = mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.02, 12), handleMat);
+        rose.rotation.x = Math.PI / 2;
+        rose.position.set(0.28, 1.05, 0.04); g.add(rose);
+
+        // Door frame
+        const fTop = mesh(new THREE.BoxGeometry(1.0, 0.08, 0.12), darkMat);
+        fTop.position.set(0, 2.18, 0); g.add(fTop);
+        const fL = mesh(new THREE.BoxGeometry(0.06, 2.2, 0.12), darkMat);
+        fL.position.set(-0.48, 1.10, 0); g.add(fL);
+        const fR = mesh(new THREE.BoxGeometry(0.06, 2.2, 0.12), darkMat);
+        fR.position.set(0.48, 1.10, 0); g.add(fR);
+
+        return g;
+    }
+
+    // ── CURTAIN PANEL ─────────────────────────────────────────────────────────
+    function makeCurtain(color) {
+        const g = new THREE.Group();
+        const fabricMat = mat(color, { side: THREE.DoubleSide, shininess: 15 });
+        const rodMat = mat('#888888', { shininess: 70 });
+        const ringMat = mat('#AAAAAA', { shininess: 80 });
+
+        // Rod
+        const rod = mesh(new THREE.CylinderGeometry(0.018, 0.018, 1.5, 12), rodMat);
+        rod.rotation.z = Math.PI / 2;
+        rod.position.set(0, 2.42, 0); g.add(rod);
+
+        // Rod finials
+        [-0.75, 0.75].forEach(x => {
+            const fin = mesh(new THREE.SphereGeometry(0.035, 12, 12), rodMat);
+            fin.position.set(x, 2.42, 0); g.add(fin);
+        });
+
+        // Curtain rings
+        for (let i = 0; i < 6; i++) {
+            const ring = mesh(new THREE.TorusGeometry(0.022, 0.006, 8, 16), ringMat);
+            ring.rotation.x = Math.PI / 2;
+            ring.position.set(-0.6 + i * 0.24, 2.40, 0); g.add(ring);
+        }
+
+        // Fabric — multiple pleated panels
+        const pleatOffsets = [-0.55, -0.28, 0, 0.28, 0.55];
+        pleatOffsets.forEach((x, i) => {
+            const w = 0.24;
+            const panel = mesh(new THREE.BoxGeometry(w, 2.3, 0.01 + (i % 2) * 0.02), fabricMat);
+            panel.position.set(x, 1.2, (i % 2) * 0.03); g.add(panel);
+        });
+
+        // Fabric bottom puddle
+        const puddle = mesh(new THREE.BoxGeometry(1.3, 0.08, 0.06), fabricMat);
+        puddle.position.set(0, 0.04, 0.02); g.add(puddle);
+
+        return g;
+    }
+
+    // ── DRESSER ───────────────────────────────────────────────────────────────
+    function makeDresser(color) {
+        const g = new THREE.Group();
+        const mainMat = mat(color);
+        const darkMat = mat(darken(color, 0.62));
+        const handleMat = mat('#B8860B', { shininess: 90 });
+
+        // Body
+        const body = mesh(new THREE.BoxGeometry(1.0, 1.1, 0.50), mainMat);
+        body.position.set(0, 0.60, 0); g.add(body);
+
+        // Top surface
+        const top = mesh(new THREE.BoxGeometry(1.04, 0.04, 0.52), darkMat);
+        top.position.set(0, 1.14, 0); g.add(top);
+
+        // Plinth
+        const plinth = mesh(new THREE.BoxGeometry(1.02, 0.05, 0.50), darkMat);
+        plinth.position.set(0, 0.025, 0); g.add(plinth);
+
+        // 4 rows of drawers
+        [0.85, 0.65, 0.45, 0.25].forEach(y => {
+            // Left drawer
+            const dL = mesh(new THREE.BoxGeometry(0.46, 0.17, 0.03), darkMat);
+            dL.position.set(-0.25, y, 0.26); g.add(dL);
+            const hL = mesh(new THREE.BoxGeometry(0.12, 0.025, 0.025), handleMat);
+            hL.position.set(-0.25, y, 0.28); g.add(hL);
+            // Right drawer
+            const dR = mesh(new THREE.BoxGeometry(0.46, 0.17, 0.03), darkMat);
+            dR.position.set(0.25, y, 0.26); g.add(dR);
+            const hR = mesh(new THREE.BoxGeometry(0.12, 0.025, 0.025), handleMat);
+            hR.position.set(0.25, y, 0.28); g.add(hR);
+        });
+
+        // Small mirror on top
+        const mirrorFrame = mesh(new THREE.BoxGeometry(0.50, 0.48, 0.04), darkMat);
+        mirrorFrame.position.set(0, 1.44, -0.12); g.add(mirrorFrame);
+        const mirrorGlass = mat('#AED6F1', { transparent: true, opacity: 0.7, shininess: 120 });
+        const mirrorSurf = mesh(new THREE.PlaneGeometry(0.42, 0.40), mirrorGlass);
+        mirrorSurf.position.set(0, 1.44, -0.09); g.add(mirrorSurf);
+
+        return g;
+    }
+
+    // ── NIGHTSTAND ────────────────────────────────────────────────────────────
+    function makeNightstand(color) {
+        const g = new THREE.Group();
+        const mainMat = mat(color);
+        const darkMat = mat(darken(color, 0.65));
+        const handleMat = mat('#999999', { shininess: 80 });
+
+        // Body
+        const body = mesh(new THREE.BoxGeometry(0.5, 0.55, 0.40), mainMat);
+        body.position.set(0, 0.315, 0); g.add(body);
+
+        // Top
+        const top = mesh(new THREE.BoxGeometry(0.52, 0.03, 0.42), darkMat);
+        top.position.set(0, 0.605, 0); g.add(top);
+
+        // Drawer
+        const drawer = mesh(new THREE.BoxGeometry(0.44, 0.16, 0.03), darkMat);
+        drawer.position.set(0, 0.40, 0.22); g.add(drawer);
+        const h = mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.10, 8), handleMat);
+        h.rotation.z = Math.PI / 2;
+        h.position.set(0, 0.40, 0.24); g.add(h);
+
+        // Open shelf below
+        const shelf = mesh(new THREE.BoxGeometry(0.46, 0.02, 0.38), darkMat);
+        shelf.position.set(0, 0.18, 0); g.add(shelf);
+
+        // 4 small legs
+        [[-0.20, -0.16], [0.20, -0.16], [-0.20, 0.16], [0.20, 0.16]].forEach(([x, z]) => {
+            const leg = mesh(new THREE.CylinderGeometry(0.018, 0.014, 0.10, 8), darkMat);
+            leg.position.set(x, 0.05, z); g.add(leg);
+        });
+
+        // Small table lamp on top
+        const lampBase = mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.04, 16), mat('#D4A96A'));
+        lampBase.position.set(0.1, 0.64, 0.05); g.add(lampBase);
+        const lampPole = mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.18, 8), mat('#888'));
+        lampPole.position.set(0.1, 0.74, 0.05); g.add(lampPole);
+        const lampShade = mesh(new THREE.ConeGeometry(0.09, 0.12, 16, 1, true), mat('#FDE8C8', { side: THREE.DoubleSide }));
+        lampShade.position.set(0.1, 0.86, 0.05); g.add(lampShade);
+
+        return g;
+    }
+
+    // ── VANITY TABLE ──────────────────────────────────────────────────────────
+    function makeVanityTable(color) {
+        const g = new THREE.Group();
+        const mainMat = mat(color);
+        const darkMat = mat(darken(color, 0.62));
+        const glassMat = mat('#AED6F1', { transparent: true, opacity: 0.65, shininess: 120 });
+        const handleMat = mat('#D4AF37', { shininess: 100 });
+
+        // Table body
+        const body = mesh(new THREE.BoxGeometry(1.0, 0.68, 0.45), mainMat);
+        body.position.set(0, 0.375, 0); g.add(body);
+
+        // Table top
+        const top = mesh(new THREE.BoxGeometry(1.04, 0.03, 0.47), darkMat);
+        top.position.set(0, 0.745, 0); g.add(top);
+
+        // Centre drawer
+        const drawer = mesh(new THREE.BoxGeometry(0.40, 0.14, 0.03), darkMat);
+        drawer.position.set(0, 0.42, 0.24); g.add(drawer);
+        const h = mesh(new THREE.BoxGeometry(0.10, 0.02, 0.02), handleMat);
+        h.position.set(0, 0.42, 0.26); g.add(h);
+
+        // Side door panels
+        [-0.36, 0.36].forEach(x => {
+            const door = mesh(new THREE.BoxGeometry(0.24, 0.58, 0.03), mainMat);
+            door.position.set(x, 0.37, 0.24); g.add(door);
+            const dh = mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.07, 8), handleMat);
+            dh.rotation.x = Math.PI / 2;
+            dh.position.set(x > 0 ? x - 0.09 : x + 0.09, 0.37, 0.26); g.add(dh);
+        });
+
+        // 4 tapered legs
+        [[-0.44, -0.18], [0.44, -0.18], [-0.44, 0.18], [0.44, 0.18]].forEach(([x, z]) => {
+            const leg = mesh(new THREE.CylinderGeometry(0.022, 0.016, 0.12, 8), darkMat);
+            leg.position.set(x, 0.06, z); g.add(leg);
+        });
+
+        // Large mirror
+        const mFrame = mesh(new THREE.BoxGeometry(0.80, 0.70, 0.04), darkMat);
+        mFrame.position.set(0, 1.16, -0.10); g.add(mFrame);
+        const mGlass = mesh(new THREE.PlaneGeometry(0.70, 0.60), glassMat);
+        mGlass.position.set(0, 1.16, -0.07); g.add(mGlass);
+
+        // Mirror stand legs
+        [-0.26, 0.26].forEach(x => {
+            const mLeg = mesh(new THREE.BoxGeometry(0.03, 0.44, 0.03), darkMat);
+            mLeg.position.set(x, 0.98, -0.10); g.add(mLeg);
+        });
+
+        // Small perfume bottle on top
+        const bottle = mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.10, 12), mat('#A8D8EA', { transparent: true, opacity: 0.7 }));
+        bottle.position.set(-0.28, 0.80, 0.02); g.add(bottle);
+
+        return g;
+    }
+
+    // ── WALL SCONCE ───────────────────────────────────────────────────────────
+    function makeWallSconce(color) {
+        const g = new THREE.Group();
+        const metalMat = mat(darken(color, 0.7), { shininess: 80 });
+        const shadeMat = mat(color, { shininess: 20 });
+        const glowMat = mat('#FFFACD', { emissive: '#FFFACD', emissiveIntensity: 0.8 });
+
+        // Wall bracket / backplate
+        const plate = mesh(new THREE.BoxGeometry(0.10, 0.22, 0.04), metalMat);
+        plate.position.set(0, 0.11, -0.04); g.add(plate);
+
+        // Arm extending from wall
+        const arm = mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.18, 8), metalMat);
+        arm.rotation.x = Math.PI / 2;
+        arm.position.set(0, 0.20, 0.09); g.add(arm);
+
+        // Shade (small cone pointing up)
+        const shade = mesh(new THREE.ConeGeometry(0.10, 0.14, 16, 1, true), shadeMat);
+        shade.rotation.x = Math.PI;
+        shade.position.set(0, 0.28, 0.19); g.add(shade);
+
+        // Glow disc
+        const glow = mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.01, 16), glowMat);
+        glow.position.set(0, 0.21, 0.19); g.add(glow);
+
+        // Point light
+        const pt = new THREE.PointLight(0xfff4cc, 0.6, 2.5);
+        pt.position.set(0, 0.25, 0.19); g.add(pt);
+
+        return g;
+    }
+
+    // ── WALL PANEL LIGHT ──────────────────────────────────────────────────────
+    function makeWallPanelLight(color) {
+        const g = new THREE.Group();
+        const houseMat = mat('#EEEEEE', { shininess: 40 });
+        const glowMat = mat(color, { emissive: color, emissiveIntensity: 1.0 });
+        const trimMat = mat('#CCCCCC', { shininess: 60 });
+
+        // Housing box (thin, wide)
+        const housing = mesh(new THREE.BoxGeometry(0.60, 0.10, 0.06), houseMat);
+        housing.position.set(0, 0.05, 0); g.add(housing);
+
+        // LED strip glow
+        const strip = mesh(new THREE.BoxGeometry(0.54, 0.03, 0.01), glowMat);
+        strip.position.set(0, 0.03, 0.04); g.add(strip);
+
+        // Trim edges
+        [-0.3, 0.3].forEach(x => {
+            const trim = mesh(new THREE.BoxGeometry(0.02, 0.10, 0.06), trimMat);
+            trim.position.set(x, 0.05, 0); g.add(trim);
+        });
+
+        // Diffuse point light
+        const pt = new THREE.PointLight(0xffffff, 0.5, 3.0);
+        pt.position.set(0, 0.10, 0.08); g.add(pt);
+
+        return g;
+    }
+
+    // ── FLOOR UPLIGHTER ───────────────────────────────────────────────────────
+    function makeFloorUplighter(color) {
+        const g = new THREE.Group();
+        const metalMat = mat('#555555', { shininess: 80 });
+        const glowMat = mat(color, { emissive: color, emissiveIntensity: 0.9 });
+
+        // Round base disc
+        const base = mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.04, 24), metalMat);
+        base.position.set(0, 0.02, 0); g.add(base);
+
+        // Short pole
+        const pole = mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.46, 12), metalMat);
+        pole.position.set(0, 0.25, 0); g.add(pole);
+
+        // Upward-opening cone shade
+        const shade = mesh(new THREE.ConeGeometry(0.16, 0.20, 24, 1, true), mat(darken(color, 0.7), { side: THREE.DoubleSide }));
+        shade.position.set(0, 0.58, 0); g.add(shade);
+
+        // Glow disc at top of shade
+        const glow = mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.01, 24), glowMat);
+        glow.position.set(0, 0.68, 0); g.add(glow);
+
+        // Point light shooting upward
+        const pt = new THREE.PointLight(0xfff4cc, 0.7, 3.0);
+        pt.position.set(0, 0.70, 0); g.add(pt);
+
+        return g;
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     //  MODEL DISPATCHER — pick the right factory per catalog ID
     // ─────────────────────────────────────────────────────────────────────────
@@ -977,6 +1320,18 @@ const C3D = (() => {
             case 'rug': return makeRug(color);
             case 'vase_floor': return makeVase(color);
             case 'mirror_floor': return makeFloorMirror(color);
+            // Window & Door
+            case 'window_single': return makeWindow(color);
+            case 'door_single': return makeDoor(color);
+            case 'curtain_panel': return makeCurtain(color);
+            // Bedroom Extras
+            case 'dresser': return makeDresser(color);
+            case 'nightstand': return makeNightstand(color);
+            case 'vanity_table': return makeVanityTable(color);
+            // Lighting
+            case 'wall_sconce': return makeWallSconce(color);
+            case 'wall_panel_light': return makeWallPanelLight(color);
+            case 'floor_uplighter': return makeFloorUplighter(color);
             default: return makeChair(color); // fallback
         }
     }

@@ -3,25 +3,30 @@
 (function () {
     'use strict';
 
-    // ── State & refs ──────────────────────────────────────────
-    let currentView = '2d'; // '2d' | '3d'
+    // ── State & refs ──────────────────────────────────────────────────────────
+    let currentView = '2d';
     let selectedFurnitureIndex = -1;
 
-    // ── DOM refs ──────────────────────────────────────────────
+    // ── DOM refs ──────────────────────────────────────────────────────────────
     const $ = id => document.getElementById(id);
 
-    // ── Init ─────────────────────────────────────────────────
-    function init() {
+    // ── Init ──────────────────────────────────────────────────────────────────
+    async function init() {
         if (!authGuard()) return;
 
-        // Load design from URL param if present
+        // Show loading indicator
+        showToast('Loading catalog…', '');
+
+        // Load design from URL param first (async)
         const params = new URLSearchParams(window.location.search);
         const did = params.get('design');
-        if (did) loadDesignIntoState(did);
+        if (did) {
+            await loadDesignIntoState(did);
+        }
 
         renderDesignTitle();
         initRoomPanel();
-        initFurnitureCatalog();
+        await initFurnitureCatalog();   // async — loads from DB
         initTabSwitching();
         initViewToggle();
         initCanvas2D();
@@ -30,51 +35,47 @@
         initSignOut();
         setupCanvasCallbacks();
 
-        // Window resize
         window.addEventListener('resize', () => {
             if (currentView === '2d') C2D.resize();
             else C3D.resize();
         });
     }
 
-    // ── Title ─────────────────────────────────────────────────
+    // ── Title ─────────────────────────────────────────────────────────────────
     function renderDesignTitle() {
         const el = $('design-title');
         if (el) el.textContent = appState.designName;
     }
 
-    // ── Room Panel ───────────────────────────────────────────
+    // ── Room Panel ────────────────────────────────────────────────────────────
     function initRoomPanel() {
-        const fields = ['room-name', 'room-width', 'room-length', 'room-height', 'room-wall-color', 'room-floor-color'];
         loadRoomIntoForm();
 
         $('update-room-btn').addEventListener('click', () => {
-            const prev = JSON.stringify(appState.currentRoom);
-            appState.currentRoom.name = $('room-name').value;
-            appState.currentRoom.width = parseFloat($('room-width').value) || 5;
-            appState.currentRoom.length = parseFloat($('room-length').value) || 5;
-            appState.currentRoom.height = parseFloat($('room-height').value) || 3;
-            appState.currentRoom.wallColor = $('room-wall-color').value;
+            appState.currentRoom.name       = $('room-name').value;
+            appState.currentRoom.width      = parseFloat($('room-width').value)  || 5;
+            appState.currentRoom.length     = parseFloat($('room-length').value) || 5;
+            appState.currentRoom.height     = parseFloat($('room-height').value) || 3;
+            appState.currentRoom.wallColor  = $('room-wall-color').value;
             appState.currentRoom.floorColor = $('room-floor-color').value;
             if (currentView === '2d') C2D.render();
             else C3D.refresh();
             showToast('Room updated!', 'success');
         });
 
-        // Live preview for color changes
         $('room-wall-color').addEventListener('input', updateColorPreview.bind(null, 'room-wall-color', 'wall-color-hex'));
         $('room-floor-color').addEventListener('input', updateColorPreview.bind(null, 'room-floor-color', 'floor-color-hex'));
     }
 
     function loadRoomIntoForm() {
         const r = appState.currentRoom;
-        $('room-name').value = r.name;
-        $('room-width').value = r.width;
-        $('room-length').value = r.length;
-        $('room-height').value = r.height;
+        $('room-name').value       = r.name;
+        $('room-width').value      = r.width;
+        $('room-length').value     = r.length;
+        $('room-height').value     = r.height;
         $('room-wall-color').value = r.wallColor;
         $('room-floor-color').value = r.floorColor;
-        updateColorPreview('room-wall-color', 'wall-color-hex');
+        updateColorPreview('room-wall-color',  'wall-color-hex');
         updateColorPreview('room-floor-color', 'floor-color-hex');
     }
 
@@ -83,13 +84,29 @@
         if (el) el.textContent = $(inputId).value.toUpperCase();
     }
 
-    // ── Furniture Catalog ────────────────────────────────────
-    function initFurnitureCatalog() {
+    // ── Furniture Catalog (async, DB-backed) ──────────────────────────────────
+    async function initFurnitureCatalog() {
         const container = $('catalog-container');
         if (!container) return;
 
-        CATALOG_CATEGORIES.forEach(cat => {
-            const items = FURNITURE_CATALOG.filter(i => i.category === cat);
+        // Show loading skeleton
+        container.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);">Loading catalog…</div>';
+
+        let catalog, categories;
+        try {
+            const result = await loadFurnitureCatalogFromDB();
+            catalog    = result.catalog;
+            categories = result.categories;
+        } catch (err) {
+            // Hard fallback to static data
+            catalog    = typeof FURNITURE_CATALOG  !== 'undefined' ? FURNITURE_CATALOG  : [];
+            categories = typeof CATALOG_CATEGORIES !== 'undefined' ? CATALOG_CATEGORIES : [];
+        }
+
+        container.innerHTML = '';
+
+        categories.forEach(cat => {
+            const items = catalog.filter(i => i.category === cat);
             if (!items.length) return;
 
             const section = document.createElement('div');
@@ -122,9 +139,9 @@
         showToast(`${item.name} added!`, 'success');
     }
 
-    // ── Canvas2D Setup ────────────────────────────────────────
+    // ── Canvas2D Setup ────────────────────────────────────────────────────────
     function initCanvas2D() {
-        const canvas = $('canvas2d');
+        const canvas    = $('canvas2d');
         const container = $('canvas2d-container');
         if (!canvas || !container) return;
         C2D.init(canvas, container);
@@ -135,19 +152,14 @@
             selectedFurnitureIndex = idx;
             highlightPlacedItem(idx);
         };
-        window._onFurnitureMove = (idx) => {
-            // Could update coords in right panel if needed
-        };
-        window._onFurnitureEdit = (idx) => {
-            setSelectedFurniture(idx);
-        };
+        window._onFurnitureMove = () => { };
+        window._onFurnitureEdit = (idx) => setSelectedFurniture(idx);
     }
 
-    // ── View Toggle (2D / 3D) ─────────────────────────────────
+    // ── View Toggle (2D / 3D) ─────────────────────────────────────────────────
     function initViewToggle() {
         $('btn-view-2d').addEventListener('click', () => switchView('2d'));
         $('btn-view-3d').addEventListener('click', () => switchView('3d'));
-        // Also icon buttons inside canvas header
         const ic2 = $('icon-btn-2d'), ic3 = $('icon-btn-3d');
         if (ic2) ic2.addEventListener('click', () => switchView('2d'));
         if (ic3) ic3.addEventListener('click', () => switchView('3d'));
@@ -176,21 +188,19 @@
         }
     }
 
-    // ── Lighting Panel ────────────────────────────────────────
+    // ── Lighting Panel ────────────────────────────────────────────────────────
     function initLightingPanel() {
-        const btn = $('lighting-btn');
+        const btn   = $('lighting-btn');
         const panel = $('lighting-panel');
         if (!btn || !panel) return;
-
         btn.addEventListener('click', () => panel.classList.toggle('open'));
-
         $('ambient-slider').addEventListener('input', e => C3D.setAmbientIntensity(parseFloat(e.target.value)));
-        $('dir-slider').addEventListener('input', e => C3D.setDirIntensity(parseFloat(e.target.value)));
+        $('dir-slider').addEventListener('input',     e => C3D.setDirIntensity(parseFloat(e.target.value)));
         $('shadow-toggle').addEventListener('change', e => C3D.setShadowsEnabled(e.target.checked));
-        $('light-color').addEventListener('input', e => C3D.setLightColor(e.target.value));
+        $('light-color').addEventListener('input',    e => C3D.setLightColor(e.target.value));
     }
 
-    // ── Tab Switching ─────────────────────────────────────────
+    // ── Tab Switching ─────────────────────────────────────────────────────────
     function initTabSwitching() {
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -203,7 +213,7 @@
         });
     }
 
-    // ── Placed Furniture List ─────────────────────────────────
+    // ── Placed Furniture List ─────────────────────────────────────────────────
     function renderPlacedFurnitureList() {
         const list = $('placed-list');
         if (!list) return;
@@ -267,7 +277,6 @@
     function setSelectedFurniture(idx) {
         selectedFurnitureIndex = idx;
         renderPlacedFurnitureList();
-        // Switch to Items tab
         const itemsTab = document.querySelector('[data-tab="items"]');
         if (itemsTab) itemsTab.click();
     }
@@ -298,9 +307,9 @@
     window.updateItemColor = function (id, color) {
         updateFurnitureInState(id, { color });
         const swatch = document.querySelector(`#placed-item-${id} .placed-item-swatch`);
-        const hex = document.querySelector(`#placed-item-${id} .color-hex`);
+        const hex    = document.querySelector(`#placed-item-${id} .color-hex`);
         if (swatch) swatch.style.background = color;
-        if (hex) hex.textContent = color.toUpperCase();
+        if (hex)    hex.textContent = color.toUpperCase();
         if (currentView === '2d') C2D.render();
         else { const item = appState.placedFurniture.find(f => f.id === id); if (item) C3D.updateFurnitureMesh(item); }
     };
@@ -317,25 +326,36 @@
         else { const item = appState.placedFurniture.find(f => f.id === id); if (item) C3D.updateFurnitureMesh(item); }
     };
 
-    // ── Save Design ───────────────────────────────────────────
+    // ── Save Design (async, DB-backed) ────────────────────────────────────────
     function initSaveDesign() {
-        $('save-design-btn').addEventListener('click', () => {
+        $('save-design-btn').addEventListener('click', async () => {
+            const btn  = $('save-design-btn');
             const name = $('design-name-input').value.trim() || appState.designName;
-            appState.designName = name;
-            saveDesign(name);
-            $('design-name-input').value = '';
-            renderDesignTitle();
-            showToast('Design saved!', 'success');
+
+            btn.disabled    = true;
+            btn.textContent = '💾 Saving…';
+
+            try {
+                await saveDesign(name);
+                $('design-name-input').value = '';
+                renderDesignTitle();
+                showToast('Design saved!', 'success');
+            } catch (err) {
+                showToast('Save failed — check your connection.', 'error');
+            } finally {
+                btn.disabled    = false;
+                btn.textContent = '💾 Save Current Design';
+            }
         });
     }
 
-    // ── Sign Out ──────────────────────────────────────────────
+    // ── Sign Out ──────────────────────────────────────────────────────────────
     function initSignOut() {
         const btn = $('signout-btn');
         if (btn) btn.addEventListener('click', authLogout);
     }
 
-    // ── Toast ─────────────────────────────────────────────────
+    // ── Toast ─────────────────────────────────────────────────────────────────
     window.showToast = function (msg, type = '') {
         const container = $('toast-container') || (() => {
             const el = document.createElement('div');
@@ -355,6 +375,6 @@
         }, 2800);
     };
 
-    // ── Startup ───────────────────────────────────────────────
+    // ── Startup ───────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', init);
 })();

@@ -1,35 +1,75 @@
-// auth.js — Authentication helpers
+// auth.js — Authentication helpers (backed by PHP session API)
 
 const AUTH_KEY = 'wala_session';
 
-const DEMO_USERS = [
-    { email: 'group108@gmail.com', password: '1234', name: 'Alex Designer' },
-    { email: 'admin@designcompiler.com', password: 'Admin123!', name: 'Sam Admin' },
-];
-
-function authLogin(email, password) {
-    const user = DEMO_USERS.find(
-        u => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-    );
-    if (!user) return false;
-    sessionStorage.setItem(AUTH_KEY, JSON.stringify({ email: user.email, name: user.name }));
-    return true;
+/**
+ * Login via PHP backend. Returns true on success.
+ */
+async function authLogin(email, password) {
+    try {
+        const data = await ApiClient.login(email, password);
+        if (data.success && data.user) {
+            sessionStorage.setItem(AUTH_KEY, JSON.stringify(data.user));
+            return true;
+        }
+        return false;
+    } catch (err) {
+        console.error('[auth] Login failed:', err);
+        return false;
+    }
 }
 
-function authLogout() {
+/**
+ * Register a new user via PHP backend. Returns { success, error }.
+ */
+async function authRegister(name, email, password) {
+    try {
+        const data = await ApiClient.register(name, email, password);
+        if (data.success && data.user) {
+            sessionStorage.setItem(AUTH_KEY, JSON.stringify(data.user));
+            return { success: true };
+        }
+        return { success: false, error: data.error || 'Registration failed' };
+    } catch (err) {
+        return { success: false, error: 'Network error' };
+    }
+}
+
+/**
+ * Logout — clears PHP session and local session storage.
+ */
+async function authLogout() {
+    try { await ApiClient.logout(); } catch (_) { /* ignore */ }
     sessionStorage.removeItem(AUTH_KEY);
     window.location.href = 'index.html';
 }
 
+/**
+ * Returns the cached user object from sessionStorage, or null.
+ */
 function authGetUser() {
     const raw = sessionStorage.getItem(AUTH_KEY);
     return raw ? JSON.parse(raw) : null;
 }
 
+/**
+ * Guards a page — redirects to index.html if not logged in.
+ * Also validates against the server session to catch expired sessions.
+ */
 function authGuard() {
     if (!authGetUser()) {
         window.location.href = 'index.html';
         return false;
     }
+    // Async server-side check — redirect if PHP session expired
+    ApiClient.checkSession().then(data => {
+        if (!data.authenticated) {
+            sessionStorage.removeItem(AUTH_KEY);
+            window.location.href = 'index.html';
+        } else {
+            // Keep local cache in sync with server
+            sessionStorage.setItem(AUTH_KEY, JSON.stringify(data.user));
+        }
+    }).catch(() => { /* network offline — allow local session to stand */ });
     return true;
 }

@@ -32,6 +32,18 @@ const FURNITURE_CATALOG = [
     { id: 'rug', name: 'Area Rug', category: 'Decor', icon: '🟫', defaultColor: '#C4956A', width: 2.0, depth: 1.5, height: 0.02 },
     { id: 'vase_floor', name: 'Large Decorative Vase', category: 'Decor', icon: '🏺', defaultColor: '#D4A373', width: 0.3, depth: 0.3, height: 0.8 },
     { id: 'mirror_floor', name: 'Leaner Floor Mirror', category: 'Decor', icon: '🪞', defaultColor: '#E9ECEF', width: 0.8, depth: 0.1, height: 1.8 },
+    // Windows & Doors
+    { id: 'window_single', name: 'Window', category: 'Window & Door', icon: '🪟', defaultColor: '#AED6F1', width: 1.0, depth: 0.1, height: 1.2 },
+    { id: 'door_single', name: 'Single Door', category: 'Window & Door', icon: '🚪', defaultColor: '#A0785A', width: 0.9, depth: 0.1, height: 2.1 },
+    { id: 'curtain_panel', name: 'Curtain Panel', category: 'Window & Door', icon: '🎭', defaultColor: '#C9ADE7', width: 1.4, depth: 0.08, height: 2.4 },
+    // Bedroom Extras
+    { id: 'dresser', name: 'Dresser', category: 'Bedroom', icon: '🗃️', defaultColor: '#C8A97E', width: 1.0, depth: 0.5, height: 1.1 },
+    { id: 'nightstand', name: 'Nightstand', category: 'Bedroom', icon: '🛋️', defaultColor: '#B89467', width: 0.5, depth: 0.4, height: 0.6 },
+    { id: 'vanity_table', name: 'Vanity Table', category: 'Bedroom', icon: '🪞', defaultColor: '#E8D5B7', width: 1.0, depth: 0.45, height: 0.75 },
+    // Lighting (wall & floor only)
+    { id: 'wall_sconce', name: 'Wall Sconce', category: 'Lighting', icon: '💡', defaultColor: '#FFD580', width: 0.2, depth: 0.15, height: 0.35 },
+    { id: 'wall_panel_light', name: 'Wall Panel Light', category: 'Lighting', icon: '🔦', defaultColor: '#FFF3C4', width: 0.6, depth: 0.08, height: 0.12 },
+    { id: 'floor_uplighter', name: 'Floor Uplighter', category: 'Lighting', icon: '🕯️', defaultColor: '#FFE599', width: 0.2, depth: 0.2, height: 0.6 },
 ];
 
-const CATALOG_CATEGORIES = ['Sofa', 'Chair', 'Bed', 'Table', 'Cabinet', 'Desk', 'Decor'];
+const CATALOG_CATEGORIES = ['Sofa', 'Chair', 'Bed', 'Table', 'Cabinet', 'Desk', 'Decor', 'Window & Door', 'Bedroom', 'Lighting'];

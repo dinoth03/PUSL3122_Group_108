@@ -36,7 +36,6 @@
         <div class="navbar-links">
             <a href="editor.html" class="nav-link">Editor</a>
             <a href="designs.html" class="nav-link active">My Designs</a>
-            <a href="rooms.html" class="nav-link">Rooms</a>
         </div>
         <div class="navbar-right">
             <button class="btn btn-ghost" id="signout-btn">↩ Sign Out</button>
@@ -72,6 +71,7 @@
 
     <div class="toast-container" id="toast-container"></div>
 
+    <script src="utils/api-client.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/state.js"></script>
     <script>
@@ -81,9 +81,13 @@
 
         let pendingDeleteId = null;
 
-        function renderDesigns() {
+        // ── Render designs from DB ────────────────────────────────────────────
+        async function renderDesigns() {
             const grid = document.getElementById('designs-grid');
-            const designs = loadDesigns();
+            grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--text-muted);">⏳ Loading designs…</div>';
+
+            const designs = await loadDesigns();
+
             if (designs.length === 0) {
                 grid.innerHTML = `
           <div class="empty-designs" style="grid-column:1/-1;">
@@ -97,9 +101,8 @@
 
             grid.innerHTML = designs.map(d => {
                 const date = new Date(d.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-                const furnitureCount = d.furniture ? d.furniture.length : 0;
+                const furnitureCount = (d.furniture || []).length;
                 const r = d.room || {};
-                const emoji = ['🛋️', '🛏️', '🪑', '🪵', '🗄️'][Math.abs(d.name.charCodeAt(0)) % 5];
                 return `
           <div class="design-card" id="card-${d.id}">
             <div class="design-card-preview">
@@ -117,7 +120,6 @@
           </div>`;
             }).join('');
 
-            // Draw mini previews
             designs.forEach(d => drawMiniPreview(d));
         }
 
@@ -169,14 +171,18 @@
             document.getElementById('delete-modal').classList.add('open');
         }
 
-        document.getElementById('delete-confirm-btn').addEventListener('click', () => {
-            if (pendingDeleteId) {
-                deleteDesign(pendingDeleteId);
-                pendingDeleteId = null;
-                document.getElementById('delete-modal').classList.remove('open');
-                renderDesigns();
+        document.getElementById('delete-confirm-btn').addEventListener('click', async () => {
+            if (!pendingDeleteId) return;
+            const id = pendingDeleteId;
+            pendingDeleteId = null;
+            document.getElementById('delete-modal').classList.remove('open');
+            try {
+                await deleteDesign(id);
                 showToast('Design deleted.', 'success');
+            } catch {
+                showToast('Delete failed.', 'error');
             }
+            renderDesigns();
         });
 
         document.getElementById('delete-cancel-btn').addEventListener('click', () => {

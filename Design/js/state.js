@@ -1,9 +1,6 @@
-// state.js — Application state management
+// state.js — Application state + DB-backed persistence
 
-const DESIGNS_KEY = 'wala_designs';
-const ROOMS_KEY = 'wala_rooms';
-
-// ── Current editor state ──────────────────────────────────
+// ── Current editor state ──────────────────────────────────────────────────────
 let appState = {
     currentDesignId: null,
     designName: 'New Design',
@@ -19,93 +16,102 @@ let appState = {
             { wall: 'left', z: 0.5, y: 1.5, width: 1.2, height: 1.2 }
         ]
     },
-    placedFurniture: [],   // { id, catalogId, name, category, color, x, y, width, depth, height, rotation, scale }
+    placedFurniture: []   // { id, catalogId, name, category, color, x, y, width, depth, height, rotation, scale }
 };
 
-// ── Designs storage ───────────────────────────────────────
-function loadDesigns() {
-    try { return JSON.parse(localStorage.getItem(DESIGNS_KEY)) || []; }
-    catch { return []; }
+// ── Designs (DB-backed) ───────────────────────────────────────────────────────
+
+/**
+ * Load all designs for the current user from the database.
+ * Returns a Promise<Array>.
+ */
+async function loadDesigns() {
+    try {
+        return await ApiClient.loadDesigns();
+    } catch (err) {
+        console.error('[state] loadDesigns failed:', err);
+        return [];
+    }
 }
 
-function saveDesignsToStorage(designs) {
-    localStorage.setItem(DESIGNS_KEY, JSON.stringify(designs));
-}
-
-function saveDesign(name) {
-    const designs = loadDesigns();
+/**
+ * Save the current appState design to the database.
+ * Returns a Promise<{ success, id }>.
+ */
+async function saveDesign(name) {
     const id = appState.currentDesignId || ('d_' + Date.now());
-    const existing = designs.findIndex(d => d.id === id);
-    const record = {
-        id,
-        name: name || appState.designName,
-        room: JSON.parse(JSON.stringify(appState.currentRoom)),
-        furniture: JSON.parse(JSON.stringify(appState.placedFurniture)),
-        updatedAt: new Date().toISOString(),
-    };
-    if (existing >= 0) designs[existing] = record;
-    else designs.push(record);
-    saveDesignsToStorage(designs);
     appState.currentDesignId = id;
-    appState.designName = record.name;
-    return id;
+    appState.designName = name || appState.designName;
+
+    try {
+        const result = await ApiClient.saveDesign(
+            id,
+            appState.designName,
+            appState.currentRoom,
+            appState.placedFurniture
+        );
+        return result;
+    } catch (err) {
+        console.error('[state] saveDesign failed:', err);
+        throw err;
+    }
 }
 
-function deleteDesign(id) {
-    const designs = loadDesigns().filter(d => d.id !== id);
-    saveDesignsToStorage(designs);
+/**
+ * Load a single design from the database into appState.
+ * Returns a Promise<boolean>.
+ */
+async function loadDesignIntoState(id) {
+    try {
+        const design = await ApiClient.loadDesign(id);
+        if (!design || design.error) return false;
+        appState.currentDesignId = design.id;
+        appState.designName      = design.name;
+        appState.currentRoom     = design.room
+            ? JSON.parse(JSON.stringify(design.room))
+            : appState.currentRoom;
+        appState.placedFurniture = design.furniture
+            ? JSON.parse(JSON.stringify(design.furniture))
+            : [];
+        return true;
+    } catch (err) {
+        console.error('[state] loadDesignIntoState failed:', err);
+        return false;
+    }
 }
 
-function loadDesignIntoState(id) {
-    const design = loadDesigns().find(d => d.id === id);
-    if (!design) return false;
-    appState.currentDesignId = design.id;
-    appState.designName = design.name;
-    appState.currentRoom = JSON.parse(JSON.stringify(design.room));
-    appState.placedFurniture = JSON.parse(JSON.stringify(design.furniture));
-    return true;
+/**
+ * Delete a design from the database.
+ */
+async function deleteDesign(id) {
+    try {
+        return await ApiClient.deleteDesign(id);
+    } catch (err) {
+        console.error('[state] deleteDesign failed:', err);
+        throw err;
+    }
 }
 
-// ── Rooms storage ─────────────────────────────────────────
-function loadRooms() {
-    try { return JSON.parse(localStorage.getItem(ROOMS_KEY)) || []; }
-    catch { return []; }
-}
 
-function saveRoom(room) {
-    const rooms = loadRooms();
-    const id = room.id || ('r_' + Date.now());
-    const existing = rooms.findIndex(r => r.id === id);
-    const record = { ...room, id, updatedAt: new Date().toISOString() };
-    if (existing >= 0) rooms[existing] = record;
-    else rooms.push(record);
-    localStorage.setItem(ROOMS_KEY, JSON.stringify(rooms));
-    return id;
-}
+// ── Furniture placement helpers ───────────────────────────────────────────────
 
-function deleteRoom(id) {
-    const rooms = loadRooms().filter(r => r.id !== id);
-    localStorage.setItem(ROOMS_KEY, JSON.stringify(rooms));
-}
-
-// ── Furniture placement helpers ───────────────────────────
 let furnitureUidCounter = Date.now();
 
 function addFurnitureToState(catalogItem) {
-    const uid = 'f_' + (furnitureUidCounter++);
+    const uid  = 'f_' + (furnitureUidCounter++);
     const item = {
-        id: uid,
+        id:        uid,
         catalogId: catalogItem.id,
-        name: catalogItem.name,
-        category: catalogItem.category,
-        color: catalogItem.defaultColor,
-        x: 0.5 + Math.random() * 0.2,   // 0-1 normalised room fraction
-        y: 0.5 + Math.random() * 0.2,
-        width: catalogItem.width,
-        depth: catalogItem.depth,
-        height: catalogItem.height,
-        rotation: 0,
-        scale: 1.0,
+        name:      catalogItem.name,
+        category:  catalogItem.category,
+        color:     catalogItem.defaultColor,
+        x:         0.5 + Math.random() * 0.2,
+        y:         0.5 + Math.random() * 0.2,
+        width:     catalogItem.width,
+        depth:     catalogItem.depth,
+        height:    catalogItem.height,
+        rotation:  0,
+        scale:     1.0,
     };
     appState.placedFurniture.push(item);
     return item;
@@ -118,4 +124,27 @@ function removeFurnitureFromState(id) {
 function updateFurnitureInState(id, changes) {
     const idx = appState.placedFurniture.findIndex(f => f.id === id);
     if (idx >= 0) Object.assign(appState.placedFurniture[idx], changes);
+}
+
+// ── Furniture Catalog (DB-backed) ─────────────────────────────────────────────
+
+/**
+ * Load furniture catalog from the DB.
+ * Returns a Promise resolving to { catalog: Array, categories: Array }.
+ */
+async function loadFurnitureCatalogFromDB() {
+    try {
+        const [catalog, categories] = await Promise.all([
+            ApiClient.loadFurnitureCatalog(),
+            ApiClient.loadFurnitureCategories()
+        ]);
+        return { catalog, categories };
+    } catch (err) {
+        console.error('[state] loadFurnitureCatalogFromDB failed, using static fallback:', err);
+        // Fall back to static FURNITURE_CATALOG if DB is unavailable
+        return {
+            catalog:    typeof FURNITURE_CATALOG    !== 'undefined' ? FURNITURE_CATALOG    : [],
+            categories: typeof CATALOG_CATEGORIES   !== 'undefined' ? CATALOG_CATEGORIES   : []
+        };
+    }
 }
