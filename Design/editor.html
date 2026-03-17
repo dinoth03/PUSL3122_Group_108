@@ -88,10 +88,10 @@
             opacity: 1;
         }
 
-        .color-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
+        .color-hex-input {
+            flex: 0.6;
+            font-family: monospace;
+            text-transform: uppercase;
         }
 
         .color-swatch-input {
@@ -173,7 +173,8 @@
                         <div class="color-row">
                             <input class="form-input color-swatch-input" type="color" id="room-wall-color"
                                 value="#FFFFFF">
-                            <span class="color-hex" id="wall-color-hex">#FFFFFF</span>
+                            <input class="form-input color-hex-input" type="text" id="wall-color-hex" value="#FFFFFF"
+                                placeholder="#FFFFFF" maxlength="7">
                         </div>
                     </div>
 
@@ -182,7 +183,8 @@
                         <div class="color-row">
                             <input class="form-input color-swatch-input" type="color" id="room-floor-color"
                                 value="#D2848C">
-                            <span class="color-hex" id="floor-color-hex">#D2848C</span>
+                            <input class="form-input color-hex-input" type="text" id="floor-color-hex" value="#D2848C"
+                                placeholder="#D2848C" maxlength="7">
                         </div>
                     </div>
 

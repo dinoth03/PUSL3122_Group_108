@@ -66,6 +66,12 @@
 
         $('room-wall-color').addEventListener('input', updateColorPreview.bind(null, 'room-wall-color', 'wall-color-hex'));
         $('room-floor-color').addEventListener('input', updateColorPreview.bind(null, 'room-floor-color', 'floor-color-hex'));
+
+        // Hex input listeners for typing color codes
+        $('wall-color-hex').addEventListener('input', syncHexToColor.bind(null, 'wall-color-hex', 'room-wall-color'));
+        $('floor-color-hex').addEventListener('input', syncHexToColor.bind(null, 'floor-color-hex', 'room-floor-color'));
+        $('wall-color-hex').addEventListener('blur', validateAndSyncHex.bind(null, 'wall-color-hex', 'room-wall-color'));
+        $('floor-color-hex').addEventListener('blur', validateAndSyncHex.bind(null, 'floor-color-hex', 'room-floor-color'));
     }
 
     function loadRoomIntoForm() {
@@ -82,7 +88,41 @@
 
     function updateColorPreview(inputId, hexId) {
         const el = $(hexId);
-        if (el) el.textContent = $(inputId).value.toUpperCase();
+        if (el) el.value = $(inputId).value.toUpperCase();
+    }
+
+    function syncHexToColor(hexId, colorId) {
+        const hexInput = $(hexId);
+        const colorInput = $(colorId);
+        if (!hexInput || !colorInput) return;
+
+        let hex = hexInput.value.trim();
+        // Add # if missing
+        if (!hex.startsWith('#')) hex = '#' + hex;
+        // Validate hex format
+        if (/^#[0-9A-F]{6}$/i.test(hex)) {
+            colorInput.value = hex.toUpperCase();
+        }
+    }
+
+    function validateAndSyncHex(hexId, colorId) {
+        const hexInput = $(hexId);
+        const colorInput = $(colorId);
+        if (!hexInput || !colorInput) return;
+
+        let hex = hexInput.value.trim();
+        if (!hex.startsWith('#')) hex = '#' + hex;
+
+        // Validate hex format (must be #RRGGBB)
+        if (/^#[0-9A-F]{6}$/i.test(hex)) {
+            colorInput.value = hex.toUpperCase();
+            hexInput.value = hex.toUpperCase();
+            showToast('Color updated!', 'success');
+        } else {
+            // Invalid format, reset to current color
+            hexInput.value = colorInput.value.toUpperCase();
+            showToast('Invalid hex code. Use format: #RRGGBB', 'error');
+        }
     }
 
     // ── Furniture Catalog (async, DB-backed) ──────────────────────────────────
@@ -244,9 +284,9 @@
         <div class="placed-item-controls" id="controls-${item.id}" style="display:${idx === selectedFurnitureIndex ? 'flex' : 'none'}">
           <div class="control-row">
             <span class="control-label">Color</span>
-            <div class="control-value">
+            <div class="control-value" style="display:flex;gap:8px;align-items:center;">
               <input type="color" value="${item.color}" onchange="updateItemColor('${item.id}', this.value)" oninput="updateItemColor('${item.id}', this.value)">
-              <span class="color-hex">${item.color.toUpperCase()}</span>
+              <input type="text" class="color-hex-input" id="hex-${item.id}" value="${item.color.toUpperCase()}" placeholder="#FFFFFF" maxlength="7" style="flex:0.6;font-family:monospace;">
             </div>
           </div>
           <div class="form-row-2">
@@ -269,6 +309,13 @@
       `;
             el.querySelector('.placed-item-header').addEventListener('click', () => selectPlacedItem(idx));
             list.appendChild(el);
+
+            // Add hex input event listeners
+            const hexInput = el.querySelector(`#hex-${item.id}`);
+            if (hexInput) {
+                hexInput.addEventListener('input', () => syncFurnitureHexToColor(item.id));
+                hexInput.addEventListener('blur', () => validateAndSyncFurnitureHex(item.id));
+            }
         });
     }
 
@@ -310,9 +357,9 @@
     window.updateItemColor = function (id, color) {
         updateFurnitureInState(id, { color });
         const swatch = document.querySelector(`#placed-item-${id} .placed-item-swatch`);
-        const hex = document.querySelector(`#placed-item-${id} .color-hex`);
+        const hexInput = document.querySelector(`#hex-${id}`);
         if (swatch) swatch.style.background = color;
-        if (hex) hex.textContent = color.toUpperCase();
+        if (hexInput) hexInput.value = color.toUpperCase();
         if (currentView === '2d') C2D.render();
         else { const item = appState.placedFurniture.find(f => f.id === id); if (item) C3D.updateFurnitureMesh(item); }
     };
@@ -338,6 +385,45 @@
         else C3D.updateFurnitureMesh(appState.placedFurniture.find(f => f.id === id));
         renderPlacedFurnitureList();
     };
+
+    function syncFurnitureHexToColor(id) {
+        const hexInput = document.querySelector(`#hex-${id}`);
+        const colorInput = document.querySelector(`#placed-item-${id} input[type="color"]`);
+        if (!hexInput || !colorInput) return;
+
+        let hex = hexInput.value.trim();
+        // Add # if missing
+        if (!hex.startsWith('#')) hex = '#' + hex;
+        // Validate hex format
+        if (/^#[0-9A-F]{6}$/i.test(hex)) {
+            colorInput.value = hex.toUpperCase();
+            window.updateItemColor(id, hex.toUpperCase());
+        }
+    }
+
+    function validateAndSyncFurnitureHex(id) {
+        const hexInput = document.querySelector(`#hex-${id}`);
+        const colorInput = document.querySelector(`#placed-item-${id} input[type="color"]`);
+        if (!hexInput || !colorInput) return;
+
+        let hex = hexInput.value.trim();
+        if (!hex.startsWith('#')) hex = '#' + hex;
+
+        // Validate hex format (must be #RRGGBB)
+        if (/^#[0-9A-F]{6}$/i.test(hex)) {
+            colorInput.value = hex.toUpperCase();
+            window.updateItemColor(id, hex.toUpperCase());
+            hexInput.value = hex.toUpperCase();
+            showToast('Color updated!', 'success');
+        } else {
+            // Invalid format, reset to current color
+            const item = appState.placedFurniture.find(f => f.id === id);
+            if (item) {
+                hexInput.value = item.color.toUpperCase();
+                showToast('Invalid hex code. Use format: #RRGGBB', 'error');
+            }
+        }
+    }
 
     // ── Save Design (async, DB-backed) ────────────────────────────────────────
     function initSaveDesign() {
@@ -389,35 +475,61 @@
                 e.preventDefault();
             }
 
+            // Ctrl+S for save (check this first, before rotation mode)
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                $('save-design-btn').click();
+                e.preventDefault();
+                return;
+            }
+
             // R key for rotation mode
             if (e.key.toLowerCase() === 'r' && selectedFurnitureIndex >= 0) {
                 rotateKey = true;
                 showToast('Press 1-4 for rotation (1=90°, 2=180°, 3=-90°, 4=0°)', '');
+                e.preventDefault();
                 return;
             }
 
             // Number keys while in rotation mode
             if (rotateKey && selectedFurnitureIndex >= 0) {
                 const item = appState.placedFurniture[selectedFurnitureIndex];
-                if (!item) return;
+                if (!item) {
+                    rotateKey = false;
+                    return;
+                }
 
                 const key = e.key;
-                if (key === '1') { rotateItemBy(item.id, 90); e.preventDefault(); }
-                else if (key === '2') { rotateItemBy(item.id, 180); e.preventDefault(); }
-                else if (key === '3') { rotateItemBy(item.id, -90); e.preventDefault(); }
-                else if (key === '4') { updateFurnitureInState(item.id, { rotation: 0 }); renderPlacedFurnitureList(); if (currentView === '2d') C2D.render(); else C3D.updateFurnitureMesh(item); e.preventDefault(); }
+                if (key === '1') {
+                    rotateItemBy(item.id, 90);
+                    e.preventDefault();
+                } else if (key === '2') {
+                    rotateItemBy(item.id, 180);
+                    e.preventDefault();
+                } else if (key === '3') {
+                    rotateItemBy(item.id, -90);
+                    e.preventDefault();
+                } else if (key === '4') {
+                    updateFurnitureInState(item.id, { rotation: 0 });
+                    renderPlacedFurnitureList();
+                    if (currentView === '2d') C2D.render();
+                    else C3D.updateFurnitureMesh(item);
+                    e.preventDefault();
+                } else if (key === 'Escape') {
+                    // Exit rotation mode with Escape
+                    rotateKey = false;
+                    showToast('Rotation mode cancelled', '');
+                    e.preventDefault();
+                } else if (key !== 'Shift' && key !== 'Control' && key !== 'Alt' && key !== 'Meta') {
+                    // Reset rotation mode if other key pressed
+                    rotateKey = false;
+                }
+                return;
             }
 
             // Delete key to remove selected
             if (e.key === 'Delete' && selectedFurnitureIndex >= 0) {
                 const item = appState.placedFurniture[selectedFurnitureIndex];
                 if (item) window.deletePlacedItem(item.id);
-                e.preventDefault();
-            }
-
-            // Ctrl+S for save
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-                $('save-design-btn').click();
                 e.preventDefault();
             }
         });
