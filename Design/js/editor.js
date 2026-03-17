@@ -34,6 +34,7 @@
         initSaveDesign();
         initSignOut();
         setupCanvasCallbacks();
+        setupKeyboardShortcuts();
 
         window.addEventListener('resize', () => {
             if (currentView === '2d') C2D.resize();
@@ -52,11 +53,11 @@
         loadRoomIntoForm();
 
         $('update-room-btn').addEventListener('click', () => {
-            appState.currentRoom.name       = $('room-name').value;
-            appState.currentRoom.width      = parseFloat($('room-width').value)  || 5;
-            appState.currentRoom.length     = parseFloat($('room-length').value) || 5;
-            appState.currentRoom.height     = parseFloat($('room-height').value) || 3;
-            appState.currentRoom.wallColor  = $('room-wall-color').value;
+            appState.currentRoom.name = $('room-name').value;
+            appState.currentRoom.width = parseFloat($('room-width').value) || 5;
+            appState.currentRoom.length = parseFloat($('room-length').value) || 5;
+            appState.currentRoom.height = parseFloat($('room-height').value) || 3;
+            appState.currentRoom.wallColor = $('room-wall-color').value;
             appState.currentRoom.floorColor = $('room-floor-color').value;
             if (currentView === '2d') C2D.render();
             else C3D.refresh();
@@ -69,13 +70,13 @@
 
     function loadRoomIntoForm() {
         const r = appState.currentRoom;
-        $('room-name').value       = r.name;
-        $('room-width').value      = r.width;
-        $('room-length').value     = r.length;
-        $('room-height').value     = r.height;
+        $('room-name').value = r.name;
+        $('room-width').value = r.width;
+        $('room-length').value = r.length;
+        $('room-height').value = r.height;
         $('room-wall-color').value = r.wallColor;
         $('room-floor-color').value = r.floorColor;
-        updateColorPreview('room-wall-color',  'wall-color-hex');
+        updateColorPreview('room-wall-color', 'wall-color-hex');
         updateColorPreview('room-floor-color', 'floor-color-hex');
     }
 
@@ -95,11 +96,11 @@
         let catalog, categories;
         try {
             const result = await loadFurnitureCatalogFromDB();
-            catalog    = result.catalog;
+            catalog = result.catalog;
             categories = result.categories;
         } catch (err) {
             // Hard fallback to static data
-            catalog    = typeof FURNITURE_CATALOG  !== 'undefined' ? FURNITURE_CATALOG  : [];
+            catalog = typeof FURNITURE_CATALOG !== 'undefined' ? FURNITURE_CATALOG : [];
             categories = typeof CATALOG_CATEGORIES !== 'undefined' ? CATALOG_CATEGORIES : [];
         }
 
@@ -141,7 +142,7 @@
 
     // ── Canvas2D Setup ────────────────────────────────────────────────────────
     function initCanvas2D() {
-        const canvas    = $('canvas2d');
+        const canvas = $('canvas2d');
         const container = $('canvas2d-container');
         if (!canvas || !container) return;
         C2D.init(canvas, container);
@@ -190,14 +191,14 @@
 
     // ── Lighting Panel ────────────────────────────────────────────────────────
     function initLightingPanel() {
-        const btn   = $('lighting-btn');
+        const btn = $('lighting-btn');
         const panel = $('lighting-panel');
         if (!btn || !panel) return;
         btn.addEventListener('click', () => panel.classList.toggle('open'));
         $('ambient-slider').addEventListener('input', e => C3D.setAmbientIntensity(parseFloat(e.target.value)));
-        $('dir-slider').addEventListener('input',     e => C3D.setDirIntensity(parseFloat(e.target.value)));
+        $('dir-slider').addEventListener('input', e => C3D.setDirIntensity(parseFloat(e.target.value)));
         $('shadow-toggle').addEventListener('change', e => C3D.setShadowsEnabled(e.target.checked));
-        $('light-color').addEventListener('input',    e => C3D.setLightColor(e.target.value));
+        $('light-color').addEventListener('input', e => C3D.setLightColor(e.target.value));
     }
 
     // ── Tab Switching ─────────────────────────────────────────────────────────
@@ -251,8 +252,10 @@
           <div class="form-row-2">
             <div class="control-row">
               <span class="control-label">Rotation (°)</span>
-              <div class="control-value">
-                <input type="number" value="${item.rotation}" min="0" max="360" step="15" onchange="updateItemRotation('${item.id}', this.value)">
+              <div class="control-value" style="display:flex;gap:6px;align-items:center;">
+                <button class="icon-btn" title="Rotate 90° (R+1)" onclick="rotateItemBy('${item.id}', 90)" style="padding:4px 8px;font-size:0.85rem;">↻</button>
+                <input type="number" value="${item.rotation}" min="0" max="360" step="15" onchange="updateItemRotation('${item.id}', this.value)" style="width:60px;">
+                <button class="icon-btn" title="Rotate -90° (R+3)" onclick="rotateItemBy('${item.id}', -90)" style="padding:4px 8px;font-size:0.85rem;">↺</button>
               </div>
             </div>
             <div class="control-row">
@@ -307,9 +310,9 @@
     window.updateItemColor = function (id, color) {
         updateFurnitureInState(id, { color });
         const swatch = document.querySelector(`#placed-item-${id} .placed-item-swatch`);
-        const hex    = document.querySelector(`#placed-item-${id} .color-hex`);
+        const hex = document.querySelector(`#placed-item-${id} .color-hex`);
         if (swatch) swatch.style.background = color;
-        if (hex)    hex.textContent = color.toUpperCase();
+        if (hex) hex.textContent = color.toUpperCase();
         if (currentView === '2d') C2D.render();
         else { const item = appState.placedFurniture.find(f => f.id === id); if (item) C3D.updateFurnitureMesh(item); }
     };
@@ -326,13 +329,23 @@
         else { const item = appState.placedFurniture.find(f => f.id === id); if (item) C3D.updateFurnitureMesh(item); }
     };
 
+    window.rotateItemBy = function (id, degrees) {
+        const item = appState.placedFurniture.find(f => f.id === id);
+        if (!item) return;
+        const newRotation = (item.rotation + degrees) % 360;
+        updateFurnitureInState(id, { rotation: newRotation >= 0 ? newRotation : newRotation + 360 });
+        if (currentView === '2d') C2D.render();
+        else C3D.updateFurnitureMesh(appState.placedFurniture.find(f => f.id === id));
+        renderPlacedFurnitureList();
+    };
+
     // ── Save Design (async, DB-backed) ────────────────────────────────────────
     function initSaveDesign() {
         $('save-design-btn').addEventListener('click', async () => {
-            const btn  = $('save-design-btn');
+            const btn = $('save-design-btn');
             const name = $('design-name-input').value.trim() || appState.designName;
 
-            btn.disabled    = true;
+            btn.disabled = true;
             btn.textContent = '💾 Saving…';
 
             try {
@@ -343,7 +356,7 @@
             } catch (err) {
                 showToast('Save failed — check your connection.', 'error');
             } finally {
-                btn.disabled    = false;
+                btn.disabled = false;
                 btn.textContent = '💾 Save Current Design';
             }
         });
@@ -353,6 +366,65 @@
     function initSignOut() {
         const btn = $('signout-btn');
         if (btn) btn.addEventListener('click', authLogout);
+    }
+
+    // ── Keyboard Shortcuts ────────────────────────────────────────────────────
+    function setupKeyboardShortcuts() {
+        let rotateKey = false;
+
+        // Help button click handler
+        const helpBtn = $('help-btn');
+        if (helpBtn) {
+            helpBtn.addEventListener('click', () => {
+                const panel = $('shortcuts-panel');
+                if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+            });
+        }
+
+        window.addEventListener('keydown', (e) => {
+            // ? key to show help (Shift+/)
+            if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+                const panel = $('shortcuts-panel');
+                if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+                e.preventDefault();
+            }
+
+            // R key for rotation mode
+            if (e.key.toLowerCase() === 'r' && selectedFurnitureIndex >= 0) {
+                rotateKey = true;
+                showToast('Press 1-4 for rotation (1=90°, 2=180°, 3=-90°, 4=0°)', '');
+                return;
+            }
+
+            // Number keys while in rotation mode
+            if (rotateKey && selectedFurnitureIndex >= 0) {
+                const item = appState.placedFurniture[selectedFurnitureIndex];
+                if (!item) return;
+
+                const key = e.key;
+                if (key === '1') { rotateItemBy(item.id, 90); e.preventDefault(); }
+                else if (key === '2') { rotateItemBy(item.id, 180); e.preventDefault(); }
+                else if (key === '3') { rotateItemBy(item.id, -90); e.preventDefault(); }
+                else if (key === '4') { updateFurnitureInState(item.id, { rotation: 0 }); renderPlacedFurnitureList(); if (currentView === '2d') C2D.render(); else C3D.updateFurnitureMesh(item); e.preventDefault(); }
+            }
+
+            // Delete key to remove selected
+            if (e.key === 'Delete' && selectedFurnitureIndex >= 0) {
+                const item = appState.placedFurniture[selectedFurnitureIndex];
+                if (item) window.deletePlacedItem(item.id);
+                e.preventDefault();
+            }
+
+            // Ctrl+S for save
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                $('save-design-btn').click();
+                e.preventDefault();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key.toLowerCase() === 'r') rotateKey = false;
+        });
     }
 
     // ── Toast ─────────────────────────────────────────────────────────────────

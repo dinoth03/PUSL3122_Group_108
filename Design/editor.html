@@ -120,6 +120,8 @@
                 <button class="view-btn active" id="btn-view-2d">⊞ 2D</button>
                 <button class="view-btn" id="btn-view-3d">⬛ 3D</button>
             </div>
+            <button id="help-btn" title="Show keyboard shortcuts (Press ?)"
+                style="background: none; border: none; color: var(--text-primary); cursor: pointer; font-size: 1.2rem; margin-right: 12px;">?</button>
             <a href="profile.html" class="nav-link" title="View Profile">👤 Profile</a>
             <button class="btn btn-ghost" id="signout-btn">↩ Sign Out</button>
         </div>
@@ -184,7 +186,8 @@
                         </div>
                     </div>
 
-                    <button class="btn btn-primary btn-full" id="update-room-btn">Update Room</button>
+                    <button class="btn btn-primary btn-full" id="update-room-btn"
+                        title="Apply room dimension and color changes">Update Room</button>
                 </div>
             </div>
 
@@ -198,7 +201,8 @@
                         <label class="form-label" for="design-name-input">Design Name</label>
                         <input class="form-input" type="text" id="design-name-input" placeholder="Enter design name">
                     </div>
-                    <button class="btn btn-primary btn-full" id="save-design-btn">💾 Save Current Design</button>
+                    <button class="btn btn-primary btn-full" id="save-design-btn"
+                        title="Save your design to the database (Ctrl+S)">💾 Save Current Design</button>
                 </div>
             </div>
         </aside>
@@ -209,8 +213,10 @@
             <div id="canvas2d-container">
                 <canvas id="canvas2d"></canvas>
                 <div class="canvas-header-btns">
-                    <button class="canvas-header-btn active" id="icon-btn-2d" title="2D View">⊞</button>
-                    <button class="canvas-header-btn" id="icon-btn-3d" title="3D View">⬛</button>
+                    <button class="canvas-header-btn active" id="icon-btn-2d"
+                        title="2D Plan View - Top-down blueprint">⊞</button>
+                    <button class="canvas-header-btn" id="icon-btn-3d"
+                        title="3D Perspective View - Realistic visualization">⬛</button>
                 </div>
             </div>
 
@@ -288,6 +294,27 @@
 
     <!-- Toast container -->
     <div class="toast-container" id="toast-container"></div>
+
+    <!-- Keyboard Shortcuts Help Panel -->
+    <div id="shortcuts-panel"
+        style="position: fixed; bottom: 20px; right: 20px; max-width: 320px; background: rgba(0,0,0,0.95); color: #fff; border-radius: 8px; padding: 16px; display: none; z-index: 1000; font-size: 0.85rem; font-family: monospace;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <strong style="font-size: 1rem;">⌨️ Keyboard Shortcuts</strong>
+            <button onclick="document.getElementById('shortcuts-panel').style.display='none'"
+                style="background: none; border: none; color: #fff; cursor: pointer; font-size: 1.2rem;">×</button>
+        </div>
+        <div
+            style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 12px; display: flex; flex-direction: column; gap: 8px;">
+            <div><strong>Rotation (when item selected):</strong></div>
+            <div> <code>R + 1</code> → Rotate 90°</div>
+            <div> <code>R + 2</code> → Rotate 180°</div>
+            <div> <code>R + 3</code> → Rotate -90°</div>
+            <div> <code>R + 4</code> → Reset to 0°</div>
+            <div style="margin-top: 8px;"><strong>General:</strong></div>
+            <div> <code>Ctrl+S</code> → Save design</div>
+            <div> <code>Delete</code> → Remove selected item</div>
+        </div>
+    </div>
 
     <!-- Scripts (order matters) -->
     <script src="utils/api-client.js"></script>

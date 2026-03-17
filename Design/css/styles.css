@@ -903,9 +903,76 @@ p {
     padding: 28px;
     width: 100%;
     max-width: 480px;
-    box-shadow: var(--shadow-lg);
-    transform: scale(.95);
-    transition: transform .2s;
+}
+
+/* ── TOOLTIPS ──────────────────────────────────────────────── */
+[title] {
+    position: relative;
+}
+
+[title]::before {
+    content: attr(title);
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.9);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+    border-radius: 4px;
+    z-index: 10;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+[title]::after {
+    content: '';
+    position: absolute;
+    bottom: 115%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 4px solid rgba(0, 0, 0, 0.9);
+    z-index: 10;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+[title]:hover::before,
+[title]:hover::after {
+    opacity: 1;
+}
+
+/* Tooltip for buttons and interactive elements */
+.btn[title]:hover::before,
+.btn[title]:hover::after,
+.icon-btn[title]:hover::before,
+.icon-btn[title]:hover::after,
+.canvas-header-btn[title]:hover::before,
+.canvas-header-btn[title]:hover::after {
+    opacity: 1;
+}
+
+/* Keyboard shortcut hints in tooltips */
+.btn-with-shortcut::after {
+    content: attr(data-shortcut);
+    display: block;
+    font-size: 0.7rem;
+    opacity: 0.8;
+    font-weight: 400;
+}
+
+box-shadow: var(--shadow-lg);
+transform: scale(.95);
+transition: transform .2s;
 }
 
 .modal-overlay.open .modal {

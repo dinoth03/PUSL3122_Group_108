@@ -100,6 +100,37 @@ const C2D = (() => {
         ctx.lineWidth = 2;
         ctx.strokeRect(area.x, area.y, area.w, area.h);
 
+        // Boundary warning indicator (highlight if any furniture is outside)
+        const hasOutOfBounds = appState.placedFurniture.some(item => {
+            const size = furniturePx(item);
+            const pos = roomToCanvas(item.x, item.y);
+            return pos.x - size.w / 2 < area.x || pos.x + size.w / 2 > area.x + area.w ||
+                pos.y - size.h / 2 < area.y || pos.y + size.h / 2 > area.y + area.h;
+        });
+
+        if (hasOutOfBounds) {
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(area.x, area.y, area.w, area.h);
+        }
+
+        // Subtle grid cells (boundary guides)
+        ctx.strokeStyle = 'rgba(124, 58, 237, 0.05)';
+        ctx.lineWidth = 0.5;
+        const gridSpacing = Math.max(20, Math.min(40, area.w / 8));
+        for (let x = area.x; x <= area.x + area.w; x += gridSpacing) {
+            ctx.beginPath();
+            ctx.moveTo(x, area.y);
+            ctx.lineTo(x, area.y + area.h);
+            ctx.stroke();
+        }
+        for (let y = area.y; y <= area.y + area.h; y += gridSpacing) {
+            ctx.beginPath();
+            ctx.moveTo(area.x, y);
+            ctx.lineTo(area.x + area.w, y);
+            ctx.stroke();
+        }
+
         // Dimension labels
         ctx.fillStyle = '#666';
         ctx.font = '12px Inter, sans-serif';
@@ -153,6 +184,11 @@ const C2D = (() => {
         const pos = roomToCanvas(item.x, item.y);
         const size = furniturePx(item);
         const rad = (item.rotation || 0) * Math.PI / 180;
+        const area = getDrawArea();
+
+        // Check if out of bounds
+        const isOutOfBounds = pos.x - size.w / 2 < area.x || pos.x + size.w / 2 > area.x + area.w ||
+            pos.y - size.h / 2 < area.y || pos.y + size.h / 2 > area.y + area.h;
 
         ctx.save();
         ctx.translate(pos.x, pos.y);
@@ -164,17 +200,22 @@ const C2D = (() => {
         ctx.shadowOffsetX = 2;
         ctx.shadowOffsetY = 2;
 
-        // Fill
-        ctx.fillStyle = item.color || '#888';
+        // Fill - use warning color if out of bounds
+        ctx.fillStyle = isOutOfBounds ? 'rgba(239, 68, 68, 0.5)' : (item.color || '#888');
         ctx.beginPath();
         ctx.roundRect(-size.w / 2, -size.h / 2, size.w, size.h, 4);
         ctx.fill();
 
-        // Stroke
+        // Stroke - highlight out of bounds in red
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
-        ctx.strokeStyle = selected ? '#7C3AED' : 'rgba(0,0,0,0.3)';
-        ctx.lineWidth = selected ? 2.5 : 1.5;
+        if (isOutOfBounds) {
+            ctx.strokeStyle = '#EF4444';
+            ctx.lineWidth = 2.5;
+        } else {
+            ctx.strokeStyle = selected ? '#7C3AED' : 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = selected ? 2.5 : 1.5;
+        }
         ctx.stroke();
 
         // Label
@@ -184,6 +225,14 @@ const C2D = (() => {
         ctx.textBaseline = 'middle';
         if (size.w > 40 && size.h > 22) {
             ctx.fillText(item.name.substring(0, 12), 0, 0);
+        }
+
+        // Warning indicator for out of bounds
+        if (isOutOfBounds) {
+            ctx.fillStyle = '#FCA5A5';
+            ctx.font = 'bold 10px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('⚠ Out of Bounds', 0, size.h / 2 + 12);
         }
 
         // Selection handles
