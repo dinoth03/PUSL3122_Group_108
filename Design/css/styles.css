@@ -903,6 +903,9 @@ p {
     padding: 28px;
     width: 100%;
     max-width: 480px;
+    box-shadow: var(--shadow-lg);
+    transform: scale(.95);
+    transition: transform .2s;
 }
 
 /* ── TOOLTIPS ──────────────────────────────────────────────── */
@@ -968,11 +971,6 @@ p {
     font-size: 0.7rem;
     opacity: 0.8;
     font-weight: 400;
-}
-
-box-shadow: var(--shadow-lg);
-transform: scale(.95);
-transition: transform .2s;
 }
 
 .modal-overlay.open .modal {

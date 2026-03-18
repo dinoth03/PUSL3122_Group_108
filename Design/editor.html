@@ -7,6 +7,8 @@
     <title>Design Compiler — Room Editor</title>
     <meta name="description" content="Design furniture layouts in 2D and 3D with Design Compiler.">
     <link rel="stylesheet" href="css/styles.css">
+    <!-- Global Notification System -->
+    <script src="js/notifier.js"></script>
     <!-- Three.js r128 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <!-- OrbitControls (must come after three.min.js) -->
@@ -132,7 +134,12 @@
 
         <!-- LEFT SIDEBAR -->
         <aside class="sidebar-left">
-            <h1 style="font-size:1.2rem;" id="design-title">New Design</h1>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                <h1 style="font-size:1.2rem;margin:0;" id="design-title">New Design</h1>
+                <button id="new-design-btn" class="btn btn-ghost"
+                    style="padding:4px 8px;font-size:0.85rem;white-space:nowrap;" title="Start a fresh new design">+
+                    New</button>
+            </div>
 
             <!-- Room Configuration -->
             <div class="sidebar-section">

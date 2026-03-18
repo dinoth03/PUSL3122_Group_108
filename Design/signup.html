@@ -11,6 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="js/notifier.js"></script>
     <style>
         /* Reuse styles from index.html (I'll copy the core ones here) */
         * {
@@ -537,10 +538,6 @@
             // ---------- 4. signup submit ----------
             const signupForm = document.getElementById('signupForm');
             const signupBtn = document.getElementById('signupBtn');
-            const errMsg = document.createElement('p');
-            errMsg.id = 'authError';
-            errMsg.style.cssText = 'color:#ff6b6b;text-align:center;font-size:.9rem;margin-top:-10px;margin-bottom:10px;display:none;text-shadow:0 0 8px #ff4444;';
-            if (signupForm) signupForm.insertBefore(errMsg, signupBtn);
 
             if (signupForm) {
                 signupForm.addEventListener('submit', async (e) => {
@@ -554,14 +551,13 @@
                     try {
                         const data = await ApiClient.register(name, email, pass);
                         if (data.success) {
-                            errMsg.style.display = 'none';
                             signupBtn.querySelector('span').textContent = '✨ success!';
                             sessionStorage.setItem('wala_session', JSON.stringify(data.user));
+                            notify.success('Account created successfully!');
                             setTimeout(() => { window.location.href = 'editor.html'; }, 1000);
                         } else { throw new Error(data.error || 'Registration failed'); }
                     } catch (error) {
-                        errMsg.textContent = `⚠ ${error.message}`;
-                        errMsg.style.display = 'block';
+                        notify.error(error.message);
                         if (signupBtn) { signupBtn.querySelector('span').textContent = 'ignite project'; signupBtn.disabled = false; }
                     }
                 });

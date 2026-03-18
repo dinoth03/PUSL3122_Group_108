@@ -20,9 +20,37 @@
         // Load design from URL param first (async)
         const params = new URLSearchParams(window.location.search);
         const did = params.get('design');
-        if (did) {
+        const isNewDesign = params.get('new') === 'true';
+
+        if (isNewDesign) {
+            // User clicked "New Design" - clear any stored design ID
+            clearCurrentDesignIdFromStorage();
+            clearRoomConfigFromStorage();
+            // Load default room config
+            loadRoomConfigFromStorage();
+        } else if (did) {
             await loadDesignIntoState(did);
+            // Save this design ID for when user navigates away and comes back
+            saveCurrentDesignIdToStorage(did);
+        } else {
+            // Check if there's a design ID in localStorage from previous session
+            const storedDesignId = loadCurrentDesignIdFromStorage();
+            if (storedDesignId) {
+                // Try to load the previously edited design
+                const loaded = await loadDesignIntoState(storedDesignId);
+                if (!loaded) {
+                    // If loading failed, fall back to loading room config
+                    clearCurrentDesignIdFromStorage();
+                    loadRoomConfigFromStorage();
+                }
+            } else {
+                // No saved design — try to restore room config from localStorage
+                loadRoomConfigFromStorage();
+            }
         }
+
+        // Save the initial state as the "last saved" state for change tracking
+        saveLastSavedState();
 
         renderDesignTitle();
         initRoomPanel();
@@ -32,6 +60,7 @@
         initCanvas2D();
         renderPlacedFurnitureList();
         initSaveDesign();
+        initNewDesignBtn();
         initSignOut();
         setupCanvasCallbacks();
         setupKeyboardShortcuts();
@@ -39,6 +68,30 @@
         window.addEventListener('resize', () => {
             if (currentView === '2d') C2D.resize();
             else C3D.resize();
+        });
+
+        // ── Warn before leaving with unsaved changes ───────────────────────────────
+        document.querySelectorAll('.nav-link').forEach(link => {
+            if (link.getAttribute('href') && link.getAttribute('href') !== 'editor.html') {
+                link.addEventListener('click', (e) => {
+                    if (hasUnsavedChanges()) {
+                        e.preventDefault();
+                        const targetUrl = link.getAttribute('href');
+                        showUnsavedChangesWarning((saved) => {
+                            window.location.href = targetUrl;
+                        });
+                    }
+                });
+            }
+        });
+
+        // ── Warn before browser back/forward with unsaved changes ──────────────────
+        window.addEventListener('beforeunload', (e) => {
+            if (hasUnsavedChanges()) {
+                e.preventDefault();
+                e.returnValue = '';
+                return '';
+            }
         });
     }
 
@@ -59,6 +112,10 @@
             appState.currentRoom.height = parseFloat($('room-height').value) || 3;
             appState.currentRoom.wallColor = $('room-wall-color').value;
             appState.currentRoom.floorColor = $('room-floor-color').value;
+
+            // Save room config to localStorage for persistence across page refreshes
+            saveRoomConfigToStorage();
+
             if (currentView === '2d') C2D.render();
             else C3D.refresh();
             showToast('Room updated!', 'success');
@@ -253,7 +310,53 @@
             });
         });
     }
+    // ── Unsaved Changes Warning Modal ─────────────────────────────────────────────
+    function showUnsavedChangesWarning(callback) {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.style.zIndex = '1000';
+        modal.innerHTML = `
+            <div class="modal">
+                <div class="modal-header">
+                    <h2>⚠️ Unsaved Changes</h2>
+                </div>
+                <p>You have unsaved changes. Do you want to save them before leaving?</p>
+                <div class="modal-footer">
+                    <button class="btn btn-ghost" id="warn-discard-btn">Don't Save</button>
+                    <button class="btn btn-primary" id="warn-save-btn">Save Now</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        modal.classList.add('open');
 
+        const cleanup = () => {
+            modal.remove();
+        };
+
+        modal.querySelector('#warn-discard-btn').addEventListener('click', () => {
+            cleanup();
+            clearCurrentDesignIdFromStorage();
+            callback(false);
+        });
+
+        modal.querySelector('#warn-save-btn').addEventListener('click', async () => {
+            const name = $('design-name-input').value.trim() || appState.designName;
+            if (!name || name === 'New Design') {
+                showToast('⚠️ Please enter a design name before saving', 'error');
+                return;
+            }
+            try {
+                await saveDesign(name);
+                clearRoomConfigFromStorage();
+                saveLastSavedState();
+                cleanup();
+                callback(true);
+            } catch (err) {
+                showToast('Save failed — check your connection.', 'error');
+            }
+        });
+    }
     // ── Placed Furniture List ─────────────────────────────────────────────────
     function renderPlacedFurnitureList() {
         const list = $('placed-list');
@@ -429,18 +532,40 @@
     function initSaveDesign() {
         $('save-design-btn').addEventListener('click', async () => {
             const btn = $('save-design-btn');
-            const name = $('design-name-input').value.trim() || appState.designName;
+            const nameInput = $('design-name-input');
+            let name = nameInput.value.trim();
+
+            // If user didn't type a new name, use the current design name (for existing designs)
+            if (!name) {
+                name = appState.designName;
+            }
+
+            // Only require a new name if this is a brand new design (name is still "New Design")
+            if (name === 'New Design' || !name) {
+                showToast('❌ Design name is required! Please enter a name for new designs.', 'error');
+                nameInput.focus();
+                nameInput.style.borderColor = '#ff6b6b';
+                setTimeout(() => nameInput.style.borderColor = '', 2000);
+                return;
+            }
 
             btn.disabled = true;
             btn.textContent = '💾 Saving…';
 
             try {
                 await saveDesign(name);
+
+                // Clear temporary room config from localStorage since design is now saved to DB
+                clearRoomConfigFromStorage();
+
+                // Save the new "last saved" state after successful save
+                saveLastSavedState();
+
                 $('design-name-input').value = '';
                 renderDesignTitle();
-                showToast('Design saved!', 'success');
+                showToast('✅ Design saved successfully!', 'success');
             } catch (err) {
-                showToast('Save failed — check your connection.', 'error');
+                showToast('❌ Save failed — check your connection.', 'error');
             } finally {
                 btn.disabled = false;
                 btn.textContent = '💾 Save Current Design';
@@ -451,7 +576,39 @@
     // ── Sign Out ──────────────────────────────────────────────────────────────
     function initSignOut() {
         const btn = $('signout-btn');
-        if (btn) btn.addEventListener('click', authLogout);
+        if (btn) {
+            btn.addEventListener('click', () => {
+                // Check for unsaved changes before signing out
+                if (hasUnsavedChanges()) {
+                    showUnsavedChangesWarning((saved) => {
+                        clearCurrentDesignIdFromStorage();
+                        authLogout();
+                    });
+                } else {
+                    clearCurrentDesignIdFromStorage();
+                    authLogout();
+                }
+            });
+        }
+    }
+
+    // ── New Design Button ──────────────────────────────────────────────────────
+    function initNewDesignBtn() {
+        const btn = $('new-design-btn');
+        if (btn) {
+            btn.addEventListener('click', () => {
+                // Check for unsaved changes before starting a new design
+                if (hasUnsavedChanges()) {
+                    showUnsavedChangesWarning((saved) => {
+                        // Navigate to new design page
+                        window.location.href = 'editor.html?new=true';
+                    });
+                } else {
+                    // No unsaved changes, go directly to new design
+                    window.location.href = 'editor.html?new=true';
+                }
+            });
+        }
     }
 
     // ── Keyboard Shortcuts ────────────────────────────────────────────────────
@@ -461,17 +618,66 @@
         // Help button click handler
         const helpBtn = $('help-btn');
         if (helpBtn) {
+            helpBtn.title = 'Press ? key to view keyboard shortcuts';
+
             helpBtn.addEventListener('click', () => {
                 const panel = $('shortcuts-panel');
-                if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+                if (panel) {
+                    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+                    if (panel.style.display === 'block') {
+                        showToast('📖 Keyboard shortcuts displayed! (Press ? or Shift+/ to toggle)', '');
+                        hideShortcutsIndicator();
+                    }
+                }
             });
         }
+
+        // Create a prominent indicator for keyboard shortcuts at bottom-right
+        const indicator = document.createElement('div');
+        indicator.id = 'shortcuts-indicator';
+        indicator.style.cssText = 'position:fixed;bottom:20px;right:20px;padding:10px 14px;background:linear-gradient(135deg, #ff6b6b, #ee5a6f);color:#fff;border-radius:8px;font-size:0.85rem;font-weight:500;cursor:pointer;z-index:500;transition:all 0.3s ease;box-shadow:0 4px 12px rgba(255,107,107,0.4);display:flex;align-items:center;gap:6px;';
+        indicator.innerHTML = '❓ Press <kbd style="background:rgba(0,0,0,0.2);padding:2px 6px;border-radius:3px;font-size:0.8rem;font-family:monospace;margin:0 2px;">?</kbd> for shortcuts';
+        indicator.addEventListener('mouseover', () => {
+            indicator.style.background = 'linear-gradient(135deg, #ff6b6b, #ff5252)';
+            indicator.style.transform = 'scale(1.05)';
+            indicator.style.boxShadow = '0 6px 16px rgba(255,107,107,0.5)';
+        });
+        indicator.addEventListener('mouseout', () => {
+            indicator.style.background = 'linear-gradient(135deg, #ff6b6b, #ee5a6f)';
+            indicator.style.transform = 'scale(1)';
+            indicator.style.boxShadow = '0 4px 12px rgba(255,107,107,0.4)';
+        });
+        indicator.addEventListener('click', () => {
+            const panel = $('shortcuts-panel');
+            if (panel) {
+                panel.style.display = 'block';
+                hideShortcutsIndicator();
+                showToast('📖 Keyboard shortcuts opened!', '');
+            }
+        });
+
+        // Close indicator when user presses ?
+        const hideShortcutsIndicator = () => {
+            indicator.style.display = 'none';
+        };
+
+        const showShortcutsIndicator = () => {
+            indicator.style.display = 'flex';
+        };
+
+        document.body.appendChild(indicator);
 
         window.addEventListener('keydown', (e) => {
             // ? key to show help (Shift+/)
             if (e.key === '?' || (e.shiftKey && e.key === '/')) {
                 const panel = $('shortcuts-panel');
-                if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+                if (panel) {
+                    const isHidden = panel.style.display === 'none' || !panel.style.display;
+                    panel.style.display = isHidden ? 'block' : 'none';
+                    if (isHidden) {
+                        hideShortcutsIndicator();
+                    }
+                }
                 e.preventDefault();
             }
 

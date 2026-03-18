@@ -201,30 +201,15 @@ class ProfileManager {
     }
 
     showSuccess(message) {
-        const alert = document.getElementById('successAlert');
-        alert.textContent = message;
-        alert.classList.add('show');
-
-        // Auto-hide after 5 seconds
-        setTimeout(() => {
-            alert.classList.remove('show');
-        }, 5000);
+        notify.success(message);
     }
 
     showError(message) {
-        const alert = document.getElementById('errorAlert');
-        alert.textContent = message;
-        alert.classList.add('show');
-
-        // Auto-hide after 5 seconds
-        setTimeout(() => {
-            alert.classList.remove('show');
-        }, 5000);
+        notify.error(message);
     }
 
     clearAlerts() {
-        document.getElementById('successAlert').classList.remove('show');
-        document.getElementById('errorAlert').classList.remove('show');
+        // Alerts auto-dismiss, no need to manually clear
     }
 }
 

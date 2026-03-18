@@ -85,6 +85,7 @@
   </div>
 
   <!-- Auth logic (must load before inline script) -->
+  <script src="js/notifier.js"></script>
   <script src="js/auth.js"></script>
   <script src="utils/api-client.js"></script>
 
@@ -95,7 +96,7 @@
 
       // ── Check if served from web server ──
       if (window.location.protocol === 'file:') {
-        alert("🚨 You're opening this file directly. PHP APIs will NOT work via file://. Please use XAMPP and visit http://localhost/...");
+        notify.error("You're opening this file directly. Please use http://localhost instead to access the PHP APIs.");
       }
 
       // ── Redirect if already authenticated ──
@@ -238,11 +239,7 @@
       const loginForm = document.getElementById('loginForm');
       const loginBtn = document.getElementById('loginBtn');
 
-      // Inject a futuristic error message element under the form
-      const errMsg = document.createElement('p');
-      errMsg.id = 'authError';
-      errMsg.style.cssText = 'color:#ff6b6b;text-align:center;font-size:.9rem;margin-top:-10px;margin-bottom:10px;display:none;text-shadow:0 0 8px #ff4444;';
-      if (loginForm) loginForm.insertBefore(errMsg, document.getElementById('loginBtn'));
+      // Error notifications are handled by the global notifier system
 
       if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
@@ -260,7 +257,6 @@
             const data = await ApiClient.login(email, pass);
             if (data.success) {
               // ✅ Success — fly to editor
-              errMsg.style.display = 'none';
               if (loginBtn) loginBtn.querySelector('span').textContent = '⚡ launching…';
 
               // Update session storage for compatibility with auth.js
@@ -271,9 +267,8 @@
               throw new Error(data.error || 'Invalid credentials');
             }
           } catch (error) {
-            // ❌ Failed — show inline error
-            errMsg.textContent = `⚠ ${error.message}`;
-            errMsg.style.display = 'block';
+            // ❌ Failed — show notification
+            notify.error(error.message || 'Login failed. Please try again.');
             if (loginBtn) {
               loginBtn.querySelector('span').textContent = 'enter atmosphere';
               loginBtn.disabled = false;

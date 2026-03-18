@@ -7,6 +7,8 @@
     <title>Walampoori — My Designs</title>
     <meta name="description" content="Browse and manage your saved furniture room designs.">
     <link rel="stylesheet" href="css/styles.css">
+    <!-- Global Notification System -->
+    <script src="js/notifier.js"></script>
     <style>
         .empty-designs {
             text-align: center;
@@ -49,7 +51,7 @@
                 <h1>My Designs</h1>
                 <p>Manage your saved room designs</p>
             </div>
-            <a href="editor.html" class="btn btn-primary">+ New Design</a>
+            <a href="editor.html?new=true" class="btn btn-primary">+ New Design</a>
         </div>
 
         <div id="designs-grid" class="designs-grid"></div>
@@ -179,9 +181,9 @@
             document.getElementById('delete-modal').classList.remove('open');
             try {
                 await deleteDesign(id);
-                showToast('Design deleted.', 'success');
+                notify.success('Design deleted.');
             } catch {
-                showToast('Delete failed.', 'error');
+                notify.error('Delete failed.');
             }
             renderDesigns();
         });
@@ -192,16 +194,6 @@
         document.getElementById('delete-modal-close').addEventListener('click', () => {
             document.getElementById('delete-modal').classList.remove('open');
         });
-
-        function showToast(msg, type = '') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            const icons = { success: '✅', error: '❌' };
-            toast.innerHTML = `<span>${icons[type] || 'ℹ️'}</span> ${msg}`;
-            container.appendChild(toast);
-            setTimeout(() => { toast.style.animation = 'fadeOut .25s ease forwards'; setTimeout(() => toast.remove(), 260); }, 2800);
-        }
 
         renderDesigns();
     </script>

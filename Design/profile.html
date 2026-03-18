@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Profile - Design Compiler</title>
     <link rel="stylesheet" href="css/styles.css">
+    <script src="js/notifier.js"></script>
     <style>
         .profile-container {
             max-width: 600px;
@@ -214,9 +215,6 @@
             <p>View and manage your account details</p>
         </div>
 
-        <div id="successAlert" class="alert alert-success"></div>
-        <div id="errorAlert" class="alert alert-error"></div>
-
         <div id="loadingIndicator" class="loading">
             <div class="spinner"></div>
             <p>Loading your profile...</p>
@@ -249,12 +247,12 @@
             </div>
 
             <div style="text-align: center; margin-top: 20px;">
-                <a href="api/auth.php?action=logout" class="btn btn-danger"
-                    style="display: inline-block; text-decoration: none;">Logout</a>
+                <button type="button" class="btn btn-danger" onclick="authLogout()">Logout</button>
             </div>
         </form>
     </div>
 
+    <script src="js/auth.js"></script>
     <script src="js/profile.js"></script>
 </body>
 
